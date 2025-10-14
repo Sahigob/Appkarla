@@ -1,1039 +1,1092 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>La App de Karla - 1º ESO</title>
-<style>
-body { font-family: Arial, sans-serif; background-color: #f0f7ff; margin:0; display:flex; justify-content:center; align-items:center; height:100vh; }
-.screen { display:none; flex-direction:column; align-items:center; background-color:#fff; padding:30px; border-radius:15px; box-shadow:0 5px 15px rgba(0,0,0,0.2); width:90%; max-width:450px; text-align:center; }
-.screen.active { display:flex; }
-h1 { color:#3a7bd5; margin-bottom:20px; }
-button { display:block; width:100%; padding:12px; margin:10px 0; border:none; border-radius:10px; background-color:#3a7bd5; color:white; font-size:16px; cursor:pointer; transition:0.3s; }
-button:hover { background-color:#2c5aa0; }
-input, select { width:80%; padding:10px; margin:8px 0; border-radius:8px; border:1px solid #ccc; }
-.timer { font-size:18px; margin-bottom:10px; color:#333; }
-.options button { background-color:#e0f0ff; color:#333; }
-.options button.correct { background-color:#8de78d; }
-.options button.wrong { background-color:#f28c8c; }
-#pointsDisplay { margin-top:10px; font-size:18px; color:#3a7bd5; }
-#levelDisplay { font-size:16px; margin-bottom:10px; color:#3a7bd5; }
-#progressBar { width:80%; background-color:#ddd; border-radius:10px; overflow:hidden; margin-bottom:10px; }
-#progress { height:15px; width:0%; background-color:#3a7bd5; transition:width 0.5s; }
-#medals { display:flex; justify-content:center; flex-wrap:wrap; margin:10px 0; }
-.medal { width:40px; height:40px; margin:5px; border-radius:50%; background-color:#ddd; display:flex; justify-content:center; align-items:center; color:#fff; font-weight:bold; transition: transform 0.3s; }
-.medal.active { background-color:#ffcc00; transform: scale(1.3); }
-#reviewQuestions p { text-align:left; margin:5px 0; }
-</style>
+    <title>Carla Maths App - 1º ESO</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            color: #333;
+            text-align: center;
+            touch-action: pan-y;
+        }
+        .screen {
+            display: none;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+            min-height: 100vh;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .screen.active {
+            display: block;
+        }
+        /* Estilos de la pantalla de Ejercicios */
+        #exerciseScreen { background-color: #e6ffe6; } /* Verde claro */
+        .question-box {
+            background-color: #fff;
+            border: 2px solid #5cb85c;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        /* COLORES DE BOTONES PARA MEJOR CONTRASTE */
+        .options button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px;
+            /* Tono verde claro pastel para botones normales */
+            background-color: #a4e4a4; /* Verde muy claro para el botón inactivo */
+            color: #333; /* Texto oscuro para contraste */
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .options button:hover:not(:disabled) {
+            background-color: #79d279; /* Un poco más oscuro al pasar el ratón */
+        }
+        .options button.correct {
+            /* Verde fuerte para la respuesta correcta */
+            background-color: #28a745; 
+            color: white; /* Texto blanco en verde oscuro */
+            font-weight: bold;
+        }
+        .options button.wrong {
+            /* ROJO CLARO para la respuesta incorrecta seleccionada */
+            background-color: #f17b7b; 
+            color: #333; /* Texto oscuro en el botón que falló */
+        }
+        /* Aseguramos que los botones deshabilitados sean muy claros */
+        .options button:disabled {
+            opacity: 0.8;
+            cursor: default;
+        }
+        
+        .gamification {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            border-bottom: 2px solid #ccc;
+        }
+        .progress-bar-container {
+            width: 50%;
+            background-color: #eee;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 0 10px;
+            height: 20px;
+        }
+        #progress {
+            height: 100%;
+            width: 0%;
+            background-color: #ffc107; /* Amarillo para progreso */
+            transition: width 0.5s;
+        }
+        .medal {
+            font-size: 1.5em;
+            opacity: 0.3;
+        }
+        .medal.active {
+            opacity: 1;
+        }
+
+        /* =================================================================== */
+        /* Estilos de la pantalla de Juego (Arcanoid) */
+        /* =================================================================== */
+        #gameScreen {
+            background-color: #202020;
+            min-height: auto;
+            /* Flexbox para centrar el canvas y el juego de memoria */
+            display: none; 
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        #gameScreen.active {
+            display: flex; 
+        }
+
+        /* Estilos ARCANOID */
+        #juegoCanvas {
+            border: 4px solid #fff;
+            background: #000;
+            display: block;
+            margin: 20px auto;
+            touch-action: none; 
+        }
+        #gameControls {
+            margin-top: 15px;
+        }
+
+        /* =================================================================== */
+        /* Estilos JUEGO DE PARES (Memory) */
+        /* =================================================================== */
+        #memoryGameContainer {
+            width: 100%; /* Ocupa el ancho de la pantalla */
+            max-width: 320px;
+            display: none; /* Oculto por defecto */
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #fce4ec; /* Fondo rosa claro */
+            border-radius: 10px;
+        }
+
+        #memoryGameContainer.active {
+            display: flex;
+        }
+
+        #memoryGameContainer header h1 {
+            color: #d81b60; /* Rosa fuerte */
+            font-size: 1.8em;
+            text-align: center;
+        }
+
+        #memoryGameContainer p {
+            color: #4a148c;
+            font-weight: 600;
+        }
+
+        .game-container-memory {
+            width: 300px; /* Tamaño adaptado para móvil/tablet */
+            height: 350px; 
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); /* 3 columnas */
+            grid-gap: 8px;
+            perspective: 1000px;
+            margin-top: 15px;
+        }
+
+        .memory-card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform .5s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* Clase para cuando la carta está volteada o emparejada */
+        .memory-card.flip, .memory-card.match {
+            transform: rotateY(180deg);
+        }
+
+        .front-face, .back-face {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            backface-visibility: hidden;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 35px;
+        }
+
+        .front-face {
+            transform: rotateY(180deg);
+            background-color: #ffffff;
+        }
+
+        .back-face {
+            background-color: #4db6ac; /* Verde azulado para el reverso */
+            color: white;
+            font-weight: bold;
+            font-size: 24px;
+            border: 3px solid #00897b;
+        }
+
+        #mensaje-victoria-memory {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #a5d6a7; /* Verde suave */
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 0 15px rgba(0, 150, 0, 0.5);
+            width: 80%;
+        }
+        
+        #mensaje-victoria-memory h2 {
+            color: #388e3c;
+        }
+
+    </style>
 </head>
 <body>
-  
 
-<!-- Pantalla de Inicio/Login -->
-<div id="loginScreen" class="screen active">
-  <h1>La App de Karla</h1>
-  <p>Introduce tu nombre y edad:</p>
-  <input id="studentNameLogin" type="text" placeholder="Nombre del alumno">
-  <input id="studentAgeLogin" type="number" placeholder="Edad" min="12" max="16">
-  <button onclick="goToSubjectFromLogin()">Guardar y continuar</button>
-</div>
-
-<!-- Pantalla de Selección de Asignatura, Evaluación y Tema -->
-<div id="subjectScreen" class="screen">
-  <h1>Selecciona asignatura, evaluación y tema</h1>
-  <select id="subjectChoose">
-    <option value="">--Selecciona Asignatura--</option>
-    <option value="matematicas">Matemáticas</option>
-    <option value="fisica">Física</option>
-    <option value="lengua">Lengua</option>
-  </select>
-  <select id="evaluationChoose">
-    <option value="">--Selecciona Evaluación--</option>
-    <option value="1ª evaluación">1ª evaluación</option>
-    <option value="2ª evaluación">2ª evaluación</option>
-    <option value="3ª evaluación">3ª evaluación</option>
-  </select>
-  <select id="topicChoose">
-    <option value="">--Selecciona Tema--</option>
-  </select>
-  <button onclick="startExercises()">Comenzar Ejercicios</button>
-  <button onclick="goToLogin()">Volver al inicio</button>
-</div>
-
-<!-- Pantalla de Ejercicios -->
-<div id="exerciseScreen" class="screen">
-  <h1>Ejercicios Diarios</h1>
-  <p id="subjectTopic">Asignatura - Tema</p>
-  <div id="pointsDisplay">Puntos: 0</div>
-  <div id="levelDisplay">Nivel: 1</div>
-  <div id="progressBar"><div id="progress"></div></div>
-  <div id="medals"></div>
-  <div id="questionContainer">
-    <p id="questionText">Pregunta</p>
-    <div class="options">
-      <button onclick="checkAnswer(this)">Opción 1</button>
-      <button onclick="checkAnswer(this)">Opción 2</button>
-      <button onclick="checkAnswer(this)">Opción 3</button>
-      <button onclick="checkAnswer(this)">Opción 4</button>
+    <div id="loginScreen" class="screen active">
+        <h2>Bienvenida, Carla 👋</h2>
+        <p>¡Vamos a repasar matemáticas de 1º ESO jugando!</p>
+        <input type="text" id="studentNameLogin" placeholder="Tu Nombre (Carla)" value="Carla" style="padding: 10px; margin: 10px; width: 80%;">
+        <input type="number" id="studentAgeLogin" placeholder="Tu Edad" value="12" style="padding: 10px; margin: 10px; width: 80%;">
+        <button onclick="goToSubjectFromLogin()" style="padding: 15px; background-color: #007bff; color: white; border: none; border-radius: 5px; width: 80%; cursor: pointer;">Entrar</button>
     </div>
-  </div>
-  <button onclick="nextQuestion()">Siguiente pregunta</button>
-  <button onclick="goToReview()">Repasar ejercicios anteriores</button>
-  <button onclick="goToSubjectFromExercise()">Volver a selección de asignatura</button>
-</div>
 
-<!-- Pantalla de Repaso Diario -->
-<div id="reviewScreen" class="screen">
-  <h1>Repaso Diario</h1>
-  <div id="reviewQuestions">
-    <p>No hay ejercicios completados aún.</p>
-  </div>
-  <button onclick="backToExercises()">Volver a ejercicios</button>
-</div>
+    <div id="subjectScreen" class="screen">
+        <h2>Selecciona tu Tema de Estudio</h2>
+        <select id="subjectChoose" disabled style="padding: 10px; margin: 10px; width: 80%;">
+            <option value="Matemáticas">Matemáticas</option>
+        </select>
+        <select id="evaluationChoose" style="padding: 10px; margin: 10px; width: 80%;">
+            <option value="">--Selecciona Evaluación--</option>
+        </select>
+        <select id="topicChoose" style="padding: 10px; margin: 10px; width: 80%;">
+            <option value="">--Selecciona Tema--</option>
+        </select>
+        <button onclick="startExercises()" style="padding: 15px; background-color: #28a745; color: white; border: none; border-radius: 5px; width: 80%; cursor: pointer;">¡Empezar a Estudiar!</button>
+    </div>
 
-<script>
-// --- Variables ---
-let currentExercises = [];
-let currentQ = 0;
-let points = 0;
-let completedExercises = [];
-let level = 1;
+    <div id="exerciseScreen" class="screen">
+        <div class="gamification">
+            <span id="levelDisplay">Nivel: 1</span>
+            <div class="progress-bar-container"><div id="progress"></div></div>
+            <span id="pointsDisplay">Puntos: 0</span>
+            <div id="medals"></div>
+        </div>
+        
+        <p>Estás estudiando: <strong id="subjectTopic"></strong></p>
+        <p>Pregunta <span id="questionNumber">1</span> de <span id="totalQuestions">20</span></p>
 
-// --- Currículo 1º ESO (ejemplo) ---
-const curriculum = {
-  matematicas: {
-    "1ºESO": {
-      "1ª evaluación": {
-        "Números naturales": [
-          { q: "¿Cuál es el valor posicional de la cifra 3 en el número 124 325?", options: ["3 unidades de millar", "3 decenas de millar", "3 unidades", "3 centenas"],correct: 3 },
-          { q: "¿Cuál es la raíz cuadrada exacta de 64?", options: ["8", "7", "6", "9"], correct: 0 },
-          { q: "¿Qué propiedad se aplica en la expresión: 5 × (3 + 2) = 5 × 3 + 5 × 2?", options: ["Identidad", "Asociativa", "Distributiva", "Conmutativa"], correct: 2 },
-          { q: "¿Cuál es el resultado de truncar 67 529 a las centenas?", options: ["67 000", "67 529", "67 520", "67 500"], correct: 3 },
-          { q: "¿Cuál es el resultado de 2 × 2 × 2 × 2 × 2?", options: ["2⁵", "10", "2⁴", "25"], correct: 0 },
-          { q: "¿Qué número sigue en la serie: 2, 4, 8, 16, ...?", options: ["18", "24", "32", "20"], correct: 2 },
-          { q: "¿Cuál es el resultado de 3²?", options: ["6", "9", "12", "8"], correct: 1 },
-          { q: "¿Qué número es mayor: 0.8 o 0.75?", options: ["0.75", "0.8", "Son iguales", "No se puede saber"], correct: 1 },
-          { q: "¿Cuál es el resultado de 100 ÷ 10?", options: ["10", "100", "1", "0"], correct: 0 },
-          { q: "¿Qué número tiene más cifras: 1 234 o 12 345?", options: ["1 234", "12 345", "Son iguales", "No se puede saber"], correct: 1 },
-          { q: "¿Cuál es el resultado de 5 × 0?", options: ["5", "0", "1", "No se puede multiplicar"], correct: 1 },
-          { q: "¿Qué número es primo?", options: ["4", "6", "7", "9"], correct: 2 },
-          { q: "¿Cuál es el resultado de 10²?", options: ["100", "20", "10", "200"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 3?", options: ["7", "9", "10", "11"], correct: 1 },
-          { q: "¿Cuál es el resultado de 81 ÷ 9?", options: ["9", "8", "7", "6"], correct: 0 },
-          { q: "¿Qué propiedad se aplica en 2 + 3 = 3 + 2?", options: ["Conmutativa", "Distributiva", "Asociativa", "Identidad"], correct: 0 },
-          { q: "¿Cuál es el resultado de 4 × (2 + 3)?", options: ["20", "14", "12", "10"], correct: 0 },
-          { q: "¿Qué número falta en la serie: 5, 10, __, 20?", options: ["12", "15", "18", "13"], correct: 1 },
-          { q: "¿Cuál es el resultado de 6 × 7?", options: ["42", "36", "48", "40"], correct: 0 },
-          { q: "¿Qué número tiene más decenas: 345 o 354?", options: ["345", "354", "Son iguales", "No se puede saber"], correct: 1 },
-          { q: "¿Cuál es el resultado de 9 × 9?", options: ["81", "72", "99", "90"], correct: 0 },
-          { q: "¿Qué número es divisible por 2 y por 5?", options: ["10", "15", "12", "25"], correct: 0 },
-          { q: "¿Cuál es el resultado de 7 × 8?", options: ["56", "64", "49", "63"], correct: 0 },
-          { q: "¿Qué número es mayor: 0.25 o 0.5?", options: ["0.25", "0.5", "Son iguales", "No se puede saber"], correct: 1 },
-          { q: "¿Cuál es el resultado de 12 ÷ 4?", options: ["3", "4", "2", "6"], correct: 0 },
-          { q: "¿Qué número tiene más centenas: 789 o 879?", options: ["789", "879", "Son iguales", "No se puede saber"], correct: 1 },
-          { q: "¿Cuál es el resultado de 5²?", options: ["25", "10", "15", "20"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 4?", options: ["9", "12", "15", "18"], correct: 1 },
-          { q: "¿Cuál es el resultado de 6 × 6?", options: ["36", "30", "42", "48"], correct: 0 },
-          { q: "¿Qué número es menor: 0.9 o 0.89?", options: ["0.9", "0.89", "Son iguales", "No se puede saber"], correct: 1 },
-          { q: "¿Cuál es el resultado de 100 ÷ 4?", options: ["25", "20", "30", "40"], correct: 0 },
-          { q: "¿Qué número tiene más unidades: 123 o 132?", options: ["123", "132", "Son iguales", "No se puede saber"], correct: 1 },
-          { q: "¿Cuál es el resultado de 8 × 5?", options: ["40", "45", "35", "50"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["11", "12", "14", "15"], correct: 0 },
-          { q: "¿Cuál es el resultado de 7²?", options: ["49", "42", "56", "63"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 6?", options: ["18", "20", "22", "24"], correct: 0 },
-          { q: "¿Cuál es el resultado de 9 × 5?", options: ["45", "40", "50", "35"], correct: 0 },
-          { q: "¿Qué número es mayor: 0.33 o 0.3?", options: ["0.33", "0.3", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 15 ÷ 3?", options: ["5", "4", "6", "3"], correct: 0 },
-          { q: "¿Qué número tiene más decenas: 456 o 465?", options: ["456", "465", "Son iguales", "No se puede saber"], correct: 1 },
-          { q: "¿Cuál es el resultado de 4²?", options: ["16", "8", "12", "20"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 9?", options: ["27", "28", "29", "30"], correct: 0 },
-          { q: "¿Cuál es el resultado de 6 × 9?", options: ["54", "56", "58", "60"], correct: 0 },
-          { q: "¿Qué número es menor: 0.78 o 0.87?", options: ["0.78", "0.87", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 90 ÷ 10?", options: ["9", "8", "10", "11"], correct: 0 },
-          { q: "¿Qué número tiene más unidades: 321 o 312?", options: ["321", "312", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 11 × 5?", options: ["55", "50", "60", "45"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["23", "24", "25", "26"], correct: 0 },
-          { q: "¿Cuál es el resultado de 3 × 3 × 3?", options: ["9", "27", "18", "12"], correct: 1 },
-          { q: "¿Qué número es múltiplo de 10?", options: ["30", "33", "35", "37"], correct: 0 },
-          { q: "¿Cuál es el resultado de 2⁴?", options: ["8", "16", "4", "32"], correct: 1 },
-          { q: "¿Qué número es primo?", options: ["13", "14", "15", "16"], correct: 0 },
-          { q: "¿Cuál es el resultado de 11 × 11?", options: ["121", "111", "101", "131"], correct: 0 },
-          { q: "¿Qué número tiene más centenas: 812 o 821?", options: ["812", "821", "Son iguales", "No se puede saber"], correct: 1 },
-          { q: "¿Cuál es el resultado de 144 ÷ 12?", options: ["12", "11", "13", "14"], correct: 0 },
-          { q: "¿Qué número es mayor: 0.67 o 0.76?", options: ["0.67", "0.76", "Son iguales", "No se puede saber"], correct: 1 },
-          { q: "¿Cuál es el resultado de 2 × 5 + 3?", options: ["13", "10", "11", "12"], correct: 0 },
-          { q: "¿Qué propiedad se aplica en (2 + 3) + 4 = 2 + (3 + 4)?", options: ["Conmutativa", "Distributiva", "Asociativa", "Identidad"], correct: 2 },
-          { q: "¿Cuál es el resultado de 8²?", options: ["64", "16", "32", "48"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 7?", options: ["21", "22", "23", "24"], correct: 0 },
-          { q: "¿Cuál es el resultado de 5 × 6 + 2?", options: ["32", "30", "28", "34"], correct: 0 },
-          { q: "¿Qué número es menor: 0.45 o 0.54?", options: ["0.45", "0.54", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 3 × (4 + 2)?", options: ["18", "12", "14", "16"], correct: 0 },
-          { q: "¿Qué número tiene más unidades: 456 o 465?", options: ["456", "465", "Son iguales", "No se puede saber"], correct: 1 },
-          { q: "¿Cuál es el resultado de 7 × 7?", options: ["49", "42", "56", "63"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 8?", options: ["32", "34", "36", "38"], correct: 0 },
-          { q: "¿Cuál es el resultado de 6 × 5 + 4?", options: ["34", "30", "36", "32"], correct: 0 },
-          { q: "¿Qué número es mayor: 0.88 o 0.89?", options: ["0.88", "0.89", "Son iguales", "No se puede saber"], correct: 1 },
-          { q: "¿Cuál es el resultado de 18 ÷ 3?", options: ["6", "5", "7", "4"], correct: 0 },
-          { q: "¿Qué número tiene más decenas: 789 o 879?", options: ["789", "879", "Son iguales", "No se puede saber"], correct: 1 },
-          { q: "¿Cuál es el resultado de 9²?", options: ["81", "72", "90", "99"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 5?", options: ["25", "26", "27", "28"], correct: 0 },
-          { q: "¿Cuál es el resultado de 8 × 6?", options: ["48", "54", "56", "46"], correct: 0 },
-          { q: "¿Qué número es menor: 0.91 o 0.9?", options: ["0.91", "0.9", "Son iguales", "No se puede saber"], correct: 1 },
-          { q: "¿Cuál es el resultado de 120 ÷ 6?", options: ["20", "18", "22", "24"], correct: 0 },
-          { q: "¿Qué número tiene más centenas: 1234 o 1324?", options: ["1234", "1324", "Son iguales", "No se puede saber"], correct: 1 },
-          { q: "¿Cuál es el resultado de 10 × 10?", options: ["100", "90", "110", "120"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["17", "18", "19", "20"], correct: 0 },
-          { q: "¿Cuál es el resultado de 6²?", options: ["36", "30", "42", "48"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 3?", options: ["15", "16", "17", "18"], correct: 0 },
-          { q: "¿Cuál es el resultado de 7 × 6?", options: ["42", "40", "44", "46"], correct: 0 },
-          { q: "¿Qué número es mayor: 0.66 o 0.6?", options: ["0.66", "0.6", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 21 ÷ 7?", options: ["3", "2", "4", "5"], correct: 0 },
-          { q: "¿Qué número tiene más decenas: 654 o 645?", options: ["654", "645", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 5³?", options: ["125", "100", "150", "175"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 2 y de 3?", options: ["6", "8", "9", "10"], correct: 0 },
-          { q: "¿Cuál es el resultado de 4 × 9?", options: ["36", "32", "40", "38"], correct: 0 },
-          { q: "¿Qué número es menor: 0.78 o 0.87?", options: ["0.78", "0.87", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 90 ÷ 10?", options: ["9", "8", "10", "11"], correct: 0 },
-          { q: "¿Qué número tiene más unidades: 321 o 312?", options: ["321", "312", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 11 × 5?", options: ["55", "50", "60", "45"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["23", "24", "25", "26"], correct: 0 },
-          { q: "¿Cuál es el resultado de 12 × 4?", options: ["48", "44", "52", "46"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 11?", options: ["22", "23", "24", "25"], correct: 0 },
-          { q: "¿Cuál es el resultado de 13 × 2?", options: ["26", "24", "28", "30"], correct: 0 },
-          { q: "¿Cuál es el resultado de 14 × 2?", options: ["28", "26", "30", "24"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 12?", options: ["24", "25", "26", "27"], correct: 0 },
-          { q: "¿Cuál es el resultado de 15 × 3?", options: ["45", "40", "50", "35"], correct: 0 },
-          { q: "¿Qué número es mayor: 0.55 o 0.5?", options: ["0.55", "0.5", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 16 ÷ 4?", options: ["4", "5", "6", "3"], correct: 0 },
-          { q: "¿Qué número tiene más centenas: 999 o 1000?", options: ["999", "1000", "Son iguales", "No se puede saber"], correct: 1 },
-          { q: "¿Cuál es el resultado de 6 × 7?", options: ["42", "36", "48", "40"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["29", "30", "31", "32"], correct: 0 },
-          { q: "¿Cuál es el resultado de 17 × 2?", options: ["34", "32", "36", "30"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 4 y de 6?", options: ["12", "16", "18", "20"], correct: 0 },
-          { q: "¿Cuál es el resultado de 18 × 2?", options: ["36", "34", "38", "32"], correct: 0 },
-          { q: "¿Qué número es menor: 0.62 o 0.61?", options: ["0.62", "0.61", "Son iguales", "No se puede saber"], correct: 1 },
-          { q: "¿Cuál es el resultado de 19 ÷ 1?", options: ["19", "18", "20", "17"], correct: 0 },
-          { q: "¿Qué número tiene más decenas: 210 o 201?", options: ["210", "201", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 20 × 2?", options: ["40", "42", "38", "36"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["37", "38", "39", "40"], correct: 0 },
-          { q: "¿Cuál es el resultado de 21 × 2?", options: ["42", "40", "44", "46"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 5 y de 10?", options: ["10", "15", "20", "25"], correct: 2 },
-          { q: "¿Cuál es el resultado de 22 ÷ 2?", options: ["11", "10", "12", "9"], correct: 0 },
-          { q: "¿Qué número tiene más unidades: 432 o 423?", options: ["432", "423", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 23 × 1?", options: ["23", "22", "24", "21"], correct: 0 },
-          { q: "¿Qué número es mayor: 0.77 o 0.76?", options: ["0.77", "0.76", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 24 ÷ 6?", options: ["4", "3", "5", "6"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 3 y de 9?", options: ["9", "12", "15", "18"], correct: 0 },
-          { q: "¿Cuál es el resultado de 25 × 2?", options: ["50", "45", "55", "60"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["41", "42", "43", "44"], correct: 0 },
-          { q: "¿Cuál es el resultado de 26 × 1?", options: ["26", "25", "27", "24"], correct: 0 },
-          { q: "¿Qué número tiene más centenas: 876 o 867?", options: ["876", "867", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 27 ÷ 3?", options: ["9", "8", "10", "7"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 6 y de 2?", options: ["12", "14", "16", "18"], correct: 0 },
-          { q: "¿Cuál es el resultado de 28 × 1?", options: ["28", "27", "29", "26"], correct: 0 },
-          { q: "¿Qué número es menor: 0.44 o 0.45?", options: ["0.44", "0.45", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 29 × 1?", options: ["29", "28", "30", "27"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["47", "48", "49", "50"], correct: 0 },
-          { q: "¿Cuál es el resultado de 30 ÷ 5?", options: ["6", "5", "7", "4"], correct: 0 },
-          { q: "¿Qué número tiene más decenas: 654 o 645?", options: ["654", "645", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 31 × 1?", options: ["31", "30", "32", "29"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 4 y de 8?", options: ["8", "12", "16", "20"], correct: 2 },
-          { q: "¿Cuál es el resultado de 32 ÷ 4?", options: ["8", "7", "6", "9"], correct: 0 },
-          { q: "¿Qué número es mayor: 0.93 o 0.92?", options: ["0.93", "0.92", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 33 × 1?", options: ["33", "32", "34", "31"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["53", "54", "55", "56"], correct: 0 },
-          { q: "¿Cuál es el resultado de 34 ÷ 2?", options: ["17", "16", "18", "15"], correct: 0 },
-          { q: "¿Qué número tiene más centenas: 999 o 998?", options: ["999", "998", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 35 × 1?", options: ["35", "34", "36", "33"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 7 y de 14?", options: ["14", "21", "28", "35"], correct: 2 },
-          { q: "¿Cuál es el resultado de 36 ÷ 6?", options: ["6", "5", "7", "4"], correct: 0 },
-          { q: "¿Qué número es menor: 0.59 o 0.6?", options: ["0.59", "0.6", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 37 × 1?", options: ["37", "36", "38", "35"], correct: 0 },
-          { q: "¿Cuál es el resultado de 38 ÷ 2?", options: ["19", "18", "20", "17"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 3 y de 6?", options: ["6", "9", "12", "15"], correct: 2 },
-          { q: "¿Cuál es el resultado de 39 × 1?", options: ["39", "38", "40", "37"], correct: 0 },
-          { q: "¿Qué número es mayor: 0.49 o 0.5?", options: ["0.49", "0.5", "Son iguales", "No se puede saber"], correct: 1 },
-          { q: "¿Cuál es el resultado de 40 ÷ 5?", options: ["8", "7", "6", "9"], correct: 0 },
-          { q: "¿Qué número tiene más centenas: 1001 o 999?", options: ["1001", "999", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 41 × 1?", options: ["41", "40", "42", "39"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["59", "60", "61", "62"], correct: 0 },
-          { q: "¿Cuál es el resultado de 42 ÷ 6?", options: ["7", "6", "8", "5"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 2 y de 10?", options: ["10", "20", "30", "40"], correct: 1 },
-          { q: "¿Cuál es el resultado de 43 × 1?", options: ["43", "42", "44", "41"], correct: 0 },
-          { q: "¿Qué número es menor: 0.73 o 0.72?", options: ["0.73", "0.72", "Son iguales", "No se puede saber"], correct: 1 },
-          { q: "¿Cuál es el resultado de 44 ÷ 4?", options: ["11", "10", "12", "9"], correct: 0 },
-          { q: "¿Qué número tiene más decenas: 321 o 312?", options: ["321", "312", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 45 × 1?", options: ["45", "44", "46", "43"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 9 y de 3?", options: ["9", "12", "15", "18"], correct: 3 },
-          { q: "¿Cuál es el resultado de 46 ÷ 2?", options: ["23", "22", "24", "21"], correct: 0 },
-          { q: "¿Qué número es mayor: 0.85 o 0.84?", options: ["0.85", "0.84", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 47 × 1?", options: ["47", "46", "48", "45"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["67", "68", "69", "70"], correct: 0 },
-          { q: "¿Cuál es el resultado de 48 ÷ 6?", options: ["8", "7", "9", "6"], correct: 0 },
-          { q: "¿Qué número tiene más centenas: 888 o 887?", options: ["888", "887", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 49 × 1?", options: ["49", "48", "50", "47"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 5 y de 15?", options: ["15", "30", "45", "60"], correct: 1 },
-          { q: "¿Cuál es el resultado de 50 ÷ 10?", options: ["5", "4", "6", "3"], correct: 0 },
-          { q: "¿Qué número es menor: 0.69 o 0.7?", options: ["0.69", "0.7", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 51 × 1?", options: ["51", "50", "52", "49"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["71", "72", "73", "74"], correct: 0 },
-          { q: "¿Cuál es el resultado de 52 ÷ 4?", options: ["13", "12", "14", "11"], correct: 0 },
-          { q: "¿Qué número tiene más decenas: 432 o 423?", options: ["432", "423", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 53 × 1?", options: ["53", "52", "54", "51"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 6 y de 12?", options: ["12", "18", "24", "30"], correct: 2 },
-          { q: "¿Cuál es el resultado de 54 ÷ 6?", options: ["9", "8", "10", "7"], correct: 0 },
-          { q: "¿Qué número es mayor: 0.61 o 0.6?", options: ["0.61", "0.6", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 55 × 1?", options: ["55", "54", "56", "53"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["79", "80", "81", "82"], correct: 0 },
-          { q: "¿Cuál es el resultado de 56 ÷ 7?", options: ["8", "7", "9", "6"], correct: 0 },
-          { q: "¿Qué número tiene más centenas: 999 o 998?", options: ["999", "998", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 57 × 1?", options: ["57", "56", "58", "55"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 3 y de 9?", options: ["27", "30", "33", "36"], correct: 0 },
-          { q: "¿Cuál es el resultado de 58 ÷ 2?", options: ["29", "28", "30", "27"], correct: 0 },
-          { q: "¿Qué número es menor: 0.58 o 0.59?", options: ["0.58", "0.59", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 59 × 1?", options: ["59", "58", "60", "57"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["83", "84", "85", "86"], correct: 0 },
-          { q: "¿Cuál es el resultado de 60 ÷ 5?", options: ["12", "11", "13", "10"], correct: 0 },
-          { q: "¿Qué número tiene más decenas: 543 o 534?", options: ["543", "534", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 61 × 1?", options: ["61", "60", "62", "59"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 2 y de 4?", options: ["4", "6", "8", "10"], correct: 2 },
-          { q: "¿Cuál es el resultado de 62 ÷ 2?", options: ["31", "30", "32", "29"], correct: 0 },
-          { q: "¿Cuál es el resultado de 63 × 1?", options: ["63", "62", "64", "61"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["89", "90", "91", "92"], correct: 0 },
-          { q: "¿Cuál es el resultado de 64 ÷ 8?", options: ["8", "7", "9", "6"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 4 y de 2?", options: ["4", "6", "8", "10"], correct: 2 },
-          { q: "¿Cuál es el resultado de 65 × 1?", options: ["65", "64", "66", "63"], correct: 0 },
-          { q: "¿Qué número es menor: 0.48 o 0.49?", options: ["0.48", "0.49", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 66 ÷ 6?", options: ["11", "10", "12", "9"], correct: 0 },
-          { q: "¿Qué número tiene más centenas: 876 o 867?", options: ["876", "867", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 67 × 1?", options: ["67", "66", "68", "65"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 3 y de 6?", options: ["6", "9", "12", "15"], correct: 2 },
-          { q: "¿Cuál es el resultado de 68 ÷ 4?", options: ["17", "16", "18", "15"], correct: 0 },
-          { q: "¿Qué número es mayor: 0.79 o 0.78?", options: ["0.79", "0.78", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 69 × 1?", options: ["69", "68", "70", "67"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["97", "98", "99", "100"], correct: 0 },
-          { q: "¿Cuál es el resultado de 70 ÷ 10?", options: ["7", "6", "8", "9"], correct: 0 },
-          { q: "¿Qué número tiene más decenas: 543 o 534?", options: ["543", "534", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 71 × 1?", options: ["71", "70", "72", "69"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 5 y de 10?", options: ["10", "15", "20", "25"], correct: 2 },
-          { q: "¿Cuál es el resultado de 72 ÷ 6?", options: ["12", "11", "13", "10"], correct: 0 },
-          { q: "¿Qué número es menor: 0.68 o 0.69?", options: ["0.68", "0.69", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 73 × 1?", options: ["73", "72", "74", "71"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["101", "102", "103", "104"], correct: 0 },
-          { q: "¿Cuál es el resultado de 74 ÷ 2?", options: ["37", "36", "38", "35"], correct: 0 },
-          { q: "¿Qué número tiene más centenas: 654 o 645?", options: ["654", "645", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 75 × 1?", options: ["75", "74", "76", "73"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 3 y de 9?", options: ["27", "30", "33", "36"], correct: 0 },
-          { q: "¿Cuál es el resultado de 76 ÷ 4?", options: ["19", "18", "20", "17"], correct: 0 },
-          { q: "¿Qué número es mayor: 0.87 o 0.86?", options: ["0.87", "0.86", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 77 × 1?", options: ["77", "76", "78", "75"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["107", "108", "109", "110"], correct: 0 },
-          { q: "¿Cuál es el resultado de 78 ÷ 6?", options: ["13", "12", "14", "11"], correct: 0 },
-          { q: "¿Qué número tiene más centenas: 321 o 312?", options: ["321", "312", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 79 × 1?", options: ["79", "78", "80", "77"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 2 y de 4?", options: ["4", "6", "8", "10"], correct: 2 },
-          { q: "¿Cuál es el resultado de 80 ÷ 8?", options: ["10", "9", "11", "8"], correct: 0 },
-          { q: "¿Qué número es menor: 0.74 o 0.75?", options: ["0.74", "0.75", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 81 × 1?", options: ["81", "80", "82", "79"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["113", "114", "115", "116"], correct: 0 },
-          { q: "¿Cuál es el resultado de 82 ÷ 2?", options: ["41", "40", "42", "39"], correct: 0 },
-          { q: "¿Qué número tiene más centenas: 888 o 887?", options: ["888", "887", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 83 × 1?", options: ["83", "82", "84", "81"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 6 y de 12?", options: ["12", "18", "24", "30"], correct: 2 },
-          { q: "¿Cuál es el resultado de 84 ÷ 6?", options: ["14", "13", "15", "12"], correct: 0 },
-          { q: "¿Qué número es mayor: 0.91 o 0.9?", options: ["0.91", "0.9", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 85 × 1?", options: ["85", "84", "86", "83"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["127", "128", "129", "130"], correct: 0 },
-          { q: "¿Cuál es el resultado de 86 ÷ 2?", options: ["43", "42", "44", "41"], correct: 0 },
-          { q: "¿Qué número tiene más decenas: 543 o 534?", options: ["543", "534", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 87 × 1?", options: ["87", "86", "88", "85"], correct: 0 },
-          { q: "¿Cuál es el resultado de 88 ÷ 8?", options: ["11", "10", "12", "9"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 4 y de 8?", options: ["8", "12", "16", "20"], correct: 2 },
-          { q: "¿Cuál es el resultado de 89 × 1?", options: ["89", "88", "90", "87"], correct: 0 },
-          { q: "¿Qué número es mayor: 0.64 o 0.63?", options: ["0.64", "0.63", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 90 ÷ 9?", options: ["10", "9", "11", "8"], correct: 0 },
-          { q: "¿Qué número tiene más centenas: 765 o 756?", options: ["765", "756", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 91 × 1?", options: ["91", "90", "92", "89"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["131", "132", "133", "134"], correct: 0 },
-          { q: "¿Cuál es el resultado de 92 ÷ 4?", options: ["23", "22", "24", "21"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 3 y de 6?", options: ["6", "9", "12", "15"], correct: 2 },
-          { q: "¿Cuál es el resultado de 93 × 1?", options: ["93", "92", "94", "91"], correct: 0 },
-          { q: "¿Qué número es menor: 0.52 o 0.53?", options: ["0.52", "0.53", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 94 ÷ 2?", options: ["47", "46", "48", "45"], correct: 0 },
-          { q: "¿Qué número tiene más decenas: 432 o 423?", options: ["432", "423", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 95 × 1?", options: ["95", "94", "96", "93"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 5 y de 10?", options: ["10", "15", "20", "25"], correct: 2 },
-          { q: "¿Cuál es el resultado de 96 ÷ 6?", options: ["16", "15", "17", "14"], correct: 0 },
-          { q: "¿Qué número es mayor: 0.66 o 0.65?", options: ["0.66", "0.65", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 97 × 1?", options: ["97", "96", "98", "95"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["137", "138", "139", "140"], correct: 0 },
-          { q: "¿Cuál es el resultado de 98 ÷ 7?", options: ["14", "13", "15", "12"], correct: 0 },
-          { q: "¿Qué número tiene más centenas: 654 o 645?", options: ["654", "645", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 99 × 1?", options: ["99", "98", "100", "97"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 3 y de 9?", options: ["27", "30", "33", "36"], correct: 0 },
-          { q: "¿Cuál es el resultado de 100 ÷ 10?", options: ["10", "9", "11", "8"], correct: 0 },
-          { q: "¿Qué número es menor: 0.88 o 0.89?", options: ["0.88", "0.89", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 101 × 1?", options: ["101", "100", "102", "99"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["149", "150", "151", "152"], correct: 0 },
-          { q: "¿Cuál es el resultado de 102 ÷ 6?", options: ["17", "16", "18", "15"], correct: 0 },
-          { q: "¿Qué número tiene más centenas: 321 o 312?", options: ["321", "312", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 103 × 1?", options: ["103", "102", "104", "101"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 2 y de 4?", options: ["4", "6", "8", "10"], correct: 2 },
-          { q: "¿Cuál es el resultado de 104 ÷ 8?", options: ["13", "12", "14", "11"], correct: 0 },
-          { q: "¿Qué número es mayor: 0.92 o 0.91?", options: ["0.92", "0.91", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 105 × 1?", options: ["105", "104", "106", "103"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["157", "158", "159", "160"], correct: 0 },
-          { q: "¿Cuál es el resultado de 106 ÷ 2?", options: ["53", "52", "54", "51"], correct: 0 },
-          { q: "¿Qué número tiene más centenas: 888 o 887?", options: ["888", "887", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 107 × 1?", options: ["107", "106", "108", "105"], correct: 0 },
-          { q: "¿Qué número es múltiplo de 6 y de 12?", options: ["12", "18", "24", "30"], correct: 2 },
-          { q: "¿Cuál es el resultado de 108 ÷ 6?", options: ["18", "17", "19", "16"], correct: 0 },
-          { q: "¿Qué número es menor: 0.95 o 0.96?", options: ["0.95", "0.96", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 109 × 1?", options: ["109", "108", "110", "107"], correct: 0 },
-          { q: "¿Qué número es primo?", options: ["163", "164", "165", "166"], correct: 0 },
-          { q: "¿Cuál es el resultado de 110 ÷ 10?", options: ["11", "10", "12", "9"], correct: 0 },
-          { q: "¿Qué número tiene más decenas: 543 o 534?", options: ["543", "534", "Son iguales", "No se puede saber"], correct: 0 },
-          { q: "¿Cuál es el resultado de 111 × 1?", options: ["111", "110", "112", "109"], correct: 0 },
-           ]
-      },
-      "2ª evaluación": {
-        "Fracciones": [
-    { q: "¿Cuál es el numerador en la fracción 3/5?", options: ["3", "5", "8", "2"], correct: 0 },
-    { q: "¿Cuál es el denominador en la fracción 7/9?", options: ["7", "9", "16", "2"], correct: 1 },
-    { q: "¿Qué fracción es equivalente a 1/2?", options: ["2/4", "3/5", "4/8", "2/3"], correct: 0 },
-    { q: "¿Cuál es mayor: 3/4 o 2/3?", options: ["3/4", "2/3", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 1/2 + 1/2?", options: ["1", "2", "1/2", "3/4"], correct: 0 },
-    { q: "¿Qué fracción representa la mitad?", options: ["1/2", "2/3", "3/4", "1/3"], correct: 0 },
-    { q: "¿Cuál es el resultado de 3/5 + 2/5?", options: ["5/5", "1", "1/5", "6/5"], correct: 3 },
-    { q: "¿Cuál es el resultado de 4/7 - 2/7?", options: ["2/7", "6/7", "1/7", "3/7"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 2/6?", options: ["1/3", "2/3", "1/2", "3/6"], correct: 0 },
-    { q: "¿Cuál es mayor: 5/8 o 3/4?", options: ["5/8", "3/4", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 2/3 + 1/3?", options: ["3/3", "1", "2/6", "4/3"], correct: 0 },
-    { q: "¿Qué fracción representa un cuarto?", options: ["1/4", "2/4", "3/4", "1/2"], correct: 0 },
-    { q: "¿Cuál es el resultado de 5/6 - 1/6?", options: ["4/6", "5/6", "6/6", "3/6"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 4/8?", options: ["1/2", "2/4", "3/6", "2/3"], correct: 0 },
-    { q: "¿Cuál es mayor: 2/5 o 3/5?", options: ["2/5", "3/5", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 1/4 + 2/4?", options: ["3/4", "1/2", "1", "2/4"], correct: 0 },
-    { q: "¿Qué fracción representa tres cuartos?", options: ["3/4", "2/4", "1/4", "4/4"], correct: 0 },
-    { q: "¿Cuál es el resultado de 7/10 - 3/10?", options: ["4/10", "5/10", "3/10", "6/10"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 5/10?", options: ["1/2", "2/5", "3/5", "4/5"], correct: 0 },
-    { q: "¿Cuál es mayor: 1/3 o 1/2?", options: ["1/3", "1/2", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 2/6 + 1/6?", options: ["3/6", "1/2", "2/3", "4/6"], correct: 0 },
-    { q: "¿Qué fracción representa dos tercios?", options: ["2/3", "1/3", "3/3", "2/4"], correct: 0 },
-    { q: "¿Cuál es el resultado de 3/4 - 1/4?", options: ["2/4", "3/4", "1/2", "1/4"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 6/12?", options: ["1/2", "2/4", "3/6", "2/3"], correct: 0 },
-    { q: "¿Cuál es mayor: 4/5 o 3/5?", options: ["4/5", "3/5", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 1/6 + 2/6?", options: ["3/6", "1/2", "2/3", "4/6"], correct: 0 },
-    { q: "¿Qué fracción representa cinco sextos?", options: ["5/6", "4/6", "6/6", "3/6"], correct: 0 },
-    { q: "¿Cuál es el resultado de 2/5 - 1/5?", options: ["1/5", "2/5", "3/5", "4/5"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 3/6?", options: ["1/2", "2/4", "3/5", "2/3"], correct: 0 },
-    { q: "¿Cuál es mayor: 2/3 o 3/4?", options: ["2/3", "3/4", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 1/3 + 2/3?", options: ["3/3", "1", "2/6", "4/3"], correct: 0 },
-    { q: "¿Qué fracción representa un sexto?", options: ["1/6", "2/6", "3/6", "1/3"], correct: 0 },
-    { q: "¿Cuál es el resultado de 5/8 - 3/8?", options: ["2/8", "3/8", "4/8", "1/8"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 2/4?", options: ["1/2", "3/6", "2/3", "1/3"], correct: 0 },
-    { q: "¿Cuál es mayor: 1/5 o 2/5?", options: ["1/5", "2/5", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 3/6 + 2/6?", options: ["5/6", "1", "6/6", "4/6"], correct: 0 },
-    { q: "¿Qué fracción representa cuatro quintos?", options: ["4/5", "3/5", "2/5", "5/5"], correct: 0 },
-    { q: "¿Cuál es el resultado de 7/8 - 1/8?", options: ["6/8", "7/8", "5/8", "4/8"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 1/3?", options: ["2/6", "3/6", "1/6", "2/3"], correct: 0 },
-    { q: "¿Cuál es mayor: 3/6 o 4/6?", options: ["3/6", "4/6", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 2/4 + 1/4?", options: ["3/4", "1/2", "1", "2/4"], correct: 0 },
-    { q: "¿Qué fracción representa tres quintos?", options: ["3/5", "2/5", "4/5", "5/5"], correct: 0 },
-    { q: "¿Qué fracción representa nueve décimos?", options: ["9/10", "0.9", "18/20", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 4/5 × 2?", options: ["1.6", "2", "1.5", "1.8"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 36/72?", options: ["1/2", "3/6", "6/12", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 2/5 o 1/2?", options: ["2/5", "1/2", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 3/6 × 3?", options: ["1.5", "2", "1", "0.5"], correct: 0 },
-    { q: "¿Qué fracción representa seis décimos?", options: ["6/10", "3/5", "0.6", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 5/6 × 2?", options: ["1.66", "1.5", "1.75", "2"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 40/80?", options: ["1/2", "2/4", "5/10", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 3/4 o 5/6?", options: ["3/4", "5/6", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 2/3 × 5?", options: ["3.33", "3", "2.5", "2"], correct: 0 },
-    { q: "¿Qué fracción representa siete décimos?", options: ["7/10", "0.7", "14/20", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 1/2 × 6?", options: ["3", "2", "4", "1"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 45/90?", options: ["1/2", "3/6", "5/10", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 1/3 o 2/5?", options: ["1/3", "2/5", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 3/5 × 3?", options: ["1.8", "1.5", "2", "1.6"], correct: 0 },
-    { q: "¿Qué fracción representa ocho décimos?", options: ["8/10", "4/5", "0.8", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/4 × 3?", options: ["1.5", "2", "1", "0.5"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 50/100?", options: ["1/2", "2/4", "5/10", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 2/3 o 3/5?", options: ["2/3", "3/5", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 4/6 × 2?", options: ["1.33", "1.5", "1.25", "1"], correct: 0 },
-    { q: "¿Qué fracción representa nueve doceavos?", options: ["9/12", "3/4", "0.75", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 3/4 × 3?", options: ["2.25", "2", "1.75", "1.5"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 60/120?", options: ["1/2", "3/6", "6/12", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 4/6 o 5/6?", options: ["4/6", "5/6", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 1/3 × 9?", options: ["3", "2", "4", "1"], correct: 0 },
-    { q: "¿Qué fracción representa diez doceavos?", options: ["10/12", "5/6", "0.83", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/3 × 6?", options: ["4", "3", "5", "2"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 70/140?", options: ["1/2", "2/4", "5/10", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 3/5 o 4/5?", options: ["3/5", "4/5", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 2/5 × 6?", options: ["2.4", "3", "1.5", "2"], correct: 0 },
-    { q: "¿Qué fracción representa once doceavos?", options: ["11/12", "0.91", "22/24", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 4/5 × 3?", options: ["2.4", "2", "3", "1.5"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 80/160?", options: ["1/2", "2/4", "4/8", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 2/4 o 3/4?", options: ["2/4", "3/4", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 3/6 × 4?", options: ["2", "1.5", "2.5", "3"], correct: 0 },
-    { q: "¿Qué fracción representa doce quinceavos?", options: ["12/15", "4/5", "0.8", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/3 × 5?", options: ["3.33", "3", "2.5", "2"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 90/180?", options: ["1/2", "3/6", "6/12", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 3/4 o 2/3?", options: ["3/4", "2/3", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 1/2 × 8?", options: ["4", "3", "5", "2"], correct: 0 },
-    { q: "¿Qué fracción representa trece quinceavos?", options: ["13/15", "0.86", "26/30", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 3/5 × 4?", options: ["2.4", "2", "1.5", "3"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 100/200?", options: ["1/2", "2/4", "5/10", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 1/2 o 3/5?", options: ["1/2", "3/5", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 2/4 × 5?", options: ["2.5", "2", "1.5", "3"], correct: 0 },
-    { q: "¿Cuál es el resultado de 5/6 × 3?", options: ["2.5", "3", "2", "1.5"], correct: 0 },
-    { q: "¿Qué fracción representa quince dieciochoavos?", options: ["15/18", "5/6", "0.83", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/3 × 7?", options: ["4.66", "4.5", "5", "3.5"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 108/216?", options: ["1/2", "2/4", "3/6", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 3/4 o 5/8?", options: ["3/4", "5/8", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 1/2 × 10?", options: ["5", "4", "6", "3"], correct: 0 },
-    { q: "¿Qué fracción representa dieciséis veinteavos?", options: ["16/20", "4/5", "0.8", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 3/5 × 5?", options: ["3", "2.5", "4", "1.5"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 120/240?", options: ["1/2", "2/4", "3/6", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 2/3 o 3/4?", options: ["2/3", "3/4", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 4/6 × 3?", options: ["2", "1.5", "2.5", "3"], correct: 0 },
-    { q: "¿Qué fracción representa diecisiete veinteavos?", options: ["17/20", "0.85", "34/40", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/3 × 8?", options: ["5.33", "5", "4", "6"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 135/270?", options: ["1/2", "3/6", "9/18", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 5/6 o 7/8?", options: ["5/6", "7/8", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 1/3 × 12?", options: ["4", "3", "5", "6"], correct: 0 },
-    { q: "¿Qué fracción representa dieciocho veinticuatroavos?", options: ["18/24", "3/4", "0.75", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 3/4 × 4?", options: ["3", "2", "4", "2.5"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 150/300?", options: ["1/2", "3/6", "5/10", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 2/5 o 3/5?", options: ["2/5", "3/5", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 2/5 × 7?", options: ["2.8", "3", "3.5", "2.5"], correct: 0 },
-    { q: "¿Qué fracción representa diecinueve veinticuatroavos?", options: ["19/24", "0.79", "38/48", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 4/5 × 4?", options: ["3.2", "3", "2.5", "4"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 160/320?", options: ["1/2", "2/4", "4/8", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 3/4 o 2/3?", options: ["3/4", "2/3", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 3/6 × 5?", options: ["2.5", "3", "2", "1.5"], correct: 0 },
-    { q: "¿Qué fracción representa veinte veinticuatroavos?", options: ["20/24", "5/6", "0.83", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/3 × 9?", options: ["6", "5", "4", "7"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 180/360?", options: ["1/2", "3/6", "6/12", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 4/5 o 3/5?", options: ["4/5", "3/5", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 2/5 × 8?", options: ["3.2", "4", "2.5", "3"], correct: 0 },
-    { q: "¿Qué fracción representa veintiuno veinticuatroavos?", options: ["21/24", "7/8", "0.875", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 5/6 × 4?", options: ["3.33", "3", "2.5", "4"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 200/400?", options: ["1/2", "2/4", "5/10", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 1/2 o 3/5?", options: ["1/2", "3/5", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 2/4 × 6?", options: ["3", "2.5", "4", "2"], correct: 0 },
-    { q: "¿Qué fracción representa veintidós veinticuatroavos?", options: ["22/24", "11/12", "0.91", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 3/5 × 6?", options: ["3.6", "3", "2.5", "4"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 225/450?", options: ["1/2", "3/6", "5/10", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 2/3 o 3/4?", options: ["2/3", "3/4", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 1/2 × 9?", options: ["4.5", "5", "3", "6"], correct: 0 },
-    { q: "¿Qué fracción representa veintitrés veinticuatroavos?", options: ["23/24", "0.95", "46/48", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 4/5 × 5?", options: ["4", "3.5", "3", "2.5"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 240/480?", options: ["1/2", "2/4", "6/12", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 3/4 o 5/6?", options: ["3/4", "5/6", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 2/3 × 10?", options: ["6.66", "6", "7", "5"], correct: 0 },
-    { q: "¿Qué fracción representa veinticuatro veinticuatroavos?", options: ["24/24", "1", "0.99", "Todas las anteriores"], correct: 1 },
-    { q: "¿Cuál es el resultado de 3/4 × 6?", options: ["4.5", "5", "3", "6"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 270/540?", options: ["1/2", "3/6", "6/12", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 5/6 o 6/7?", options: ["5/6", "6/7", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 1/2 × 11?", options: ["5.5", "6", "4", "5"], correct: 0 },
-    { q: "¿Qué fracción representa veinticinco treintaavos?", options: ["25/30", "5/6", "0.83", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/5 × 9?", options: ["3.6", "4", "5", "2.5"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 300/600?", options: ["1/2", "2/4", "3/6", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 3/4 o 7/10?", options: ["3/4", "7/10", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 4/5 × 6?", options: ["4.8", "5", "3", "6"], correct: 0 },
-    { q: "¿Qué fracción representa veintiséis treintaavos?", options: ["26/30", "13/15", "0.86", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 3/5 × 7?", options: ["4.2", "5", "3", "6"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 315/630?", options: ["1/2", "3/6", "5/10", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 2/3 o 5/8?", options: ["2/3", "5/8", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 1/3 × 15?", options: ["5", "4", "6", "3"], correct: 0 },
-    { q: "¿Qué fracción representa veintisiete treintaavos?", options: ["27/30", "9/10", "0.9", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/3 × 11?", options: ["7.33", "7", "6", "8"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 330/660?", options: ["1/2", "3/6", "6/12", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 3/5 o 2/3?", options: ["3/5", "2/3", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 4/6 × 5?", options: ["3.33", "3", "2.5", "4"], correct: 0 },
-    { q: "¿Qué fracción representa veintiocho treintaavos?", options: ["28/30", "14/15", "0.93", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 3/4 × 7?", options: ["5.25", "6", "4", "5"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 360/720?", options: ["1/2", "2/4", "3/6", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 5/6 o 3/4?", options: ["5/6", "3/4", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 1/2 × 13?", options: ["6.5", "7", "5", "6"], correct: 0 },
-    { q: "¿Qué fracción representa veintinueve treintaavos?", options: ["29/30", "0.96", "58/60", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/5 × 10?", options: ["4", "5", "3", "6"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 375/750?", options: ["1/2", "3/6", "5/10", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 2/3 o 4/5?", options: ["2/3", "4/5", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 3/5 × 8?", options: ["4.8", "5", "3", "6"], correct: 0 },
-    { q: "¿Qué fracción representa treinta treintaavos?", options: ["30/30", "1", "0.99", "Todas las anteriores"], correct: 1 },
-    { q: "¿Cuál es el resultado de 4/5 × 7?", options: ["5.6", "6", "4", "5"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 390/780?", options: ["1/2", "3/6", "6/12", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 3/4 o 7/10?", options: ["3/4", "7/10", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 2/3 × 12?", options: ["8", "7", "6", "9"], correct: 0 },
-    { q: "¿Qué fracción representa treinta y uno treintaavos?", options: ["31/30", "1.03", "62/60", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 3/5 × 9?", options: ["5.4", "6", "4", "5"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 405/810?", options: ["1/2", "3/6", "5/10", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 5/6 o 6/7?", options: ["5/6", "6/7", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 1/3 × 18?", options: ["6", "5", "4", "7"], correct: 0 },
-    { q: "¿Qué fracción representa treinta y dos treintaavos?", options: ["32/30", "1.06", "64/60", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/5 × 11?", options: ["4.4", "5", "6", "3"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 420/840?", options: ["1/2", "2/4", "3/6", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 2/3 o 3/4?", options: ["2/3", "3/4", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 3/4 × 8?", options: ["6", "5", "4", "7"], correct: 0 },
-    { q: "¿Cuál es el resultado de 2/3 × 13?", options: ["8.66", "9", "7", "6.5"], correct: 0 },
-    { q: "¿Qué fracción representa treinta y tres treintaavos?", options: ["33/30", "1.1", "66/60", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 3/4 × 9?", options: ["6.75", "7", "6", "5.5"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 435/870?", options: ["1/2", "3/6", "6/12", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 5/6 o 7/9?", options: ["5/6", "7/9", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 1/2 × 14?", options: ["7", "6", "8", "5"], correct: 0 },
-    { q: "¿Qué fracción representa treinta y cuatro treintaavos?", options: ["34/30", "1.13", "68/60", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/5 × 12?", options: ["4.8", "5", "6", "3"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 450/900?", options: ["1/2", "3/6", "5/10", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 3/4 o 5/7?", options: ["3/4", "5/7", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 4/5 × 8?", options: ["6.4", "7", "5", "6"], correct: 0 },
-    { q: "¿Qué fracción representa treinta y cinco treintaavos?", options: ["35/30", "1.16", "70/60", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 3/5 × 10?", options: ["6", "5", "7", "4.5"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 465/930?", options: ["1/2", "3/6", "6/12", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 2/3 o 3/5?", options: ["2/3", "3/5", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 1/3 × 21?", options: ["7", "6", "8", "5"], correct: 0 },
-    { q: "¿Qué fracción representa treinta y seis treintaavos?", options: ["36/30", "1.2", "72/60", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/5 × 13?", options: ["5.2", "6", "4", "5"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 480/960?", options: ["1/2", "2/4", "3/6", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 3/4 o 6/10?", options: ["3/4", "6/10", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 3/4 × 10?", options: ["7.5", "8", "6", "7"], correct: 0 },
-    { q: "¿Qué fracción representa treinta y siete treintaavos?", options: ["37/30", "1.23", "74/60", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/3 × 14?", options: ["9.33", "10", "8", "7"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 495/990?", options: ["1/2", "3/6", "5/10", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 5/6 o 4/5?", options: ["5/6", "4/5", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 1/2 × 15?", options: ["7.5", "8", "6", "7"], correct: 0 },
-    { q: "¿Qué fracción representa treinta y ocho treintaavos?", options: ["38/30", "1.26", "76/60", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 3/5 × 11?", options: ["6.6", "7", "5", "6"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 510/1020?", options: ["1/2", "3/6", "6/12", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 2/3 o 5/8?", options: ["2/3", "5/8", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 4/6 × 6?", options: ["4", "3", "5", "2"], correct: 0 },
-    { q: "¿Qué fracción representa treinta y nueve treintaavos?", options: ["39/30", "1.3", "78/60", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/5 × 14?", options: ["5.6", "6", "4", "5"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 525/1050?", options: ["1/2", "3/6", "5/10", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 3/4 o 5/8?", options: ["3/4", "5/8", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 3/4 × 11?", options: ["8.25", "9", "7", "6.5"], correct: 0 },
-    { q: "¿Qué fracción representa cuarenta treintaavos?", options: ["40/30", "1.33", "80/60", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/3 × 15?", options: ["10", "9", "8", "11"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 540/1080?", options: ["1/2", "2/4", "3/6", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 5/6 o 7/9?", options: ["5/6", "7/9", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 1/3 × 24?", options: ["8", "7", "6", "9"], correct: 0 },
-    { q: "¿Qué fracción representa cuarenta y uno treintaavos?", options: ["41/30", "1.36", "82/60", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/5 × 15?", options: ["6", "5", "7", "4"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 555/1110?", options: ["1/2", "3/6", "6/12", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 2/3 o 3/5?", options: ["2/3", "3/5", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 3/5 × 12?", options: ["7.2", "6", "8", "5"], correct: 0 },
-    { q: "¿Cuál es el resultado de 2/3 × 16?", options: ["10.66", "11", "9", "10"], correct: 0 },
-    { q: "¿Qué fracción representa cuarenta y dos treintaavos?", options: ["42/30", "1.4", "84/60", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 3/4 × 12?", options: ["9", "8", "10", "7.5"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 570/1140?", options: ["1/2", "3/6", "6/12", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 5/6 o 8/9?", options: ["5/6", "8/9", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 1/2 × 16?", options: ["8", "7", "9", "6"], correct: 0 },
-    { q: "¿Qué fracción representa cuarenta y tres treintaavos?", options: ["43/30", "1.43", "86/60", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/5 × 16?", options: ["6.4", "7", "8", "5"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 585/1170?", options: ["1/2", "3/6", "5/10", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 3/4 o 6/9?", options: ["3/4", "6/9", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 4/5 × 9?", options: ["7.2", "8", "6", "7"], correct: 0 },
-    { q: "¿Qué fracción representa cuarenta y cuatro treintaavos?", options: ["44/30", "1.46", "88/60", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 3/5 × 13?", options: ["7.8", "8", "6", "7"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 600/1200?", options: ["1/2", "2/4", "3/6", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 2/3 o 4/7?", options: ["2/3", "4/7", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 1/3 × 27?", options: ["9", "8", "10", "7"], correct: 0 },
-    { q: "¿Qué fracción representa cuarenta y cinco treintaavos?", options: ["45/30", "1.5", "90/60", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/5 × 17?", options: ["6.8", "7", "8", "5"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 615/1230?", options: ["1/2", "3/6", "6/12", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 3/4 o 7/10?", options: ["3/4", "7/10", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 3/4 × 14?", options: ["10.5", "11", "9", "10"], correct: 0 },
-    { q: "¿Qué fracción representa cuarenta y seis treintaavos?", options: ["46/30", "1.53", "92/60", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/3 × 17?", options: ["11.33", "12", "10", "9"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 630/1260?", options: ["1/2", "3/6", "5/10", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 5/6 o 6/7?", options: ["5/6", "6/7", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 1/2 × 18?", options: ["9", "8", "10", "7"], correct: 0 },
-    { q: "¿Qué fracción representa cuarenta y siete treintaavos?", options: ["47/30", "1.56", "94/60", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/5 × 18?", options: ["7.2", "8", "6", "7"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 645/1290?", options: ["1/2", "3/6", "6/12", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 3/4 o 5/8?", options: ["3/4", "5/8", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 3/5 × 15?", options: ["9", "8", "10", "7"], correct: 0 },
-    { q: "¿Qué fracción representa cuarenta y ocho treintaavos?", options: ["48/30", "1.6", "96/60", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/3 × 18?", options: ["12", "11", "10", "9"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 660/1320?", options: ["1/2", "2/4", "3/6", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 5/6 o 7/8?", options: ["5/6", "7/8", "Son iguales", "No se puede saber"], correct: 1 },
-    { q: "¿Cuál es el resultado de 1/3 × 30?", options: ["10", "9", "11", "8"], correct: 0 },
-    { q: "¿Qué fracción representa cuarenta y nueve treintaavos?", options: ["49/30", "1.63", "98/60", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/5 × 19?", options: ["7.6", "8", "6", "7"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 675/1350?", options: ["1/2", "3/6", "5/10", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 2/3 o 3/5?", options: ["2/3", "3/5", "Son iguales", "No se puede saber"], correct: 0 },
-    { q: "¿Cuál es el resultado de 3/4 × 16?", options: ["12", "11", "13", "10"], correct: 0 },
-    { q: "¿Qué fracción representa cincuenta treintaavos?", options: ["50/30", "1.66", "100/60", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es el resultado de 2/3 × 19?", options: ["12.66", "13", "11", "12"], correct: 0 },
-    { q: "¿Qué fracción es equivalente a 690/1380?", options: ["1/2", "2/4", "3/6", "Todas las anteriores"], correct: 3 },
-    { q: "¿Cuál es mayor: 3/4 o 6/10?", options: ["3/4", "6/10", "Son iguales", "No se puede saber"], correct: 0 },
-    ]
-      },
-      "3ª evaluación": {
-      "Estadística": [
-    { q: "¿Qué es la media de un conjunto de datos?", options: ["El número más frecuente", "La suma dividida entre la cantidad", "El valor central", "El valor más alto"], correct: 1 },
-    { q: "¿Qué representa la moda?", options: ["El número más frecuente", "La suma total", "El valor medio", "El valor mínimo"], correct: 0 },
-    { q: "¿Qué es la mediana?", options: ["El número más frecuente", "El valor central", "La suma dividida entre la cantidad", "El valor más alto"], correct: 1 },
-    { q: "¿Cuál es la moda de los datos: 2, 3, 3, 4, 5?", options: ["2", "3", "4", "5"], correct: 1 },
-    { q: "¿Cuál es la mediana de los datos: 1, 3, 5?", options: ["1", "3", "5", "4"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 2, 4, 6?", options: ["4", "5", "6", "3"], correct: 0 },
-    { q: "¿Qué valor representa la moda en 5, 5, 6, 7, 8?", options: ["5", "6", "7", "8"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 4, 6, 8, 10, 12?", options: ["6", "8", "10", "12"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 3, 6, 9?", options: ["6", "5", "7", "4"], correct: 0 },
-    { q: "¿Qué representa la media?", options: ["El valor más alto", "El valor más bajo", "El promedio", "El número más frecuente"], correct: 2 },
-    { q: "¿Cuál es la moda de los datos: 1, 2, 2, 3, 4?", options: ["1", "2", "3", "4"], correct: 1 },
-    { q: "¿Cuál es la mediana de los datos: 10, 20, 30?", options: ["10", "20", "30", "15"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 5, 10, 15?", options: ["10", "12", "8", "9"], correct: 0 },
-    { q: "¿Qué valor representa la moda en 7, 8, 8, 9, 10?", options: ["7", "8", "9", "10"], correct: 1 },
-    { q: "¿Cuál es la mediana de los datos: 2, 4, 6, 8, 10?", options: ["4", "6", "8", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 1, 2, 3, 4, 5?", options: ["3", "2", "4", "5"], correct: 0 },
-    { q: "¿Qué representa la mediana?", options: ["El valor más alto", "El valor más bajo", "El valor central", "El número más frecuente"], correct: 2 },
-    { q: "¿Cuál es la moda de los datos: 6, 6, 7, 8, 9?", options: ["6", "7", "8", "9"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 3, 5, 7?", options: ["3", "5", "7", "6"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 4, 8, 12?", options: ["8", "9", "10", "7"], correct: 0 },
-    { q: "¿Qué valor representa la moda en 2, 2, 3, 4, 5?", options: ["2", "3", "4", "5"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 5, 10, 15, 20, 25?", options: ["10", "15", "20", "25"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 6, 12, 18?", options: ["12", "13", "14", "15"], correct: 0 },
-    { q: "¿Qué representa la moda?", options: ["El valor más alto", "El valor más bajo", "El número más frecuente", "El promedio"], correct: 2 },
-    { q: "¿Cuál es la moda de los datos: 9, 9, 10, 11, 12?", options: ["9", "10", "11", "12"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 1, 2, 3, 4, 5?", options: ["2", "3", "4", "5"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 2, 4, 6, 8?", options: ["5", "6", "7", "4"], correct: 0 },
-    { q: "¿Qué representa la media?", options: ["El promedio", "El valor más alto", "El número más frecuente", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 3, 3, 4, 5, 6?", options: ["3", "4", "5", "6"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 7, 8, 9?", options: ["7", "8", "9", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 10, 20, 30?", options: ["20", "25", "15", "30"], correct: 0 },
-    { q: "¿Qué valor representa la moda en 1, 1, 2, 3, 4?", options: ["1", "2", "3", "4"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 6, 8, 10, 12, 14?", options: ["8", "10", "12", "14"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 5, 10, 15, 20?", options: ["12.5", "13", "14", "15"], correct: 0 },
-    { q: "¿Qué representa la mediana?", options: ["El valor central", "El promedio", "El valor más alto", "El número más frecuente"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 4, 4, 5, 6, 7?", options: ["4", "5", "6", "7"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 2, 4, 6, 8, 10?", options: ["4", "6", "8", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 3, 6, 9, 12?", options: ["7.5", "8", "9", "6"], correct: 0 },
-    { q: "¿Qué representa la moda?", options: ["El número más frecuente", "El promedio", "El valor más alto", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 5, 5, 6, 7, 8?", options: ["5", "6", "7", "8"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 1, 3, 5, 7, 9?", options: ["3", "5", "7", "9"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 2, 4, 6, 8, 10?", options: ["6", "5", "7", "4"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 2, 4, 4, 6, 8?", options: ["2", "4", "6", "8"], correct: 1 },
-    { q: "¿Cuál es la mediana de los datos: 10, 20, 30, 40, 50?", options: ["20", "30", "40", "50"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 5, 10, 15, 20, 25?", options: ["15", "16", "17", "18"], correct: 0 },
-    { q: "¿Qué representa la moda?", options: ["El valor más alto", "El valor más bajo", "El número más frecuente", "El promedio"], correct: 2 },
-    { q: "¿Cuál es la moda de los datos: 7, 7, 8, 9, 10?", options: ["7", "8", "9", "10"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 3, 6, 9, 12, 15?", options: ["6", "9", "12", "15"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 2, 4, 6, 8, 10?", options: ["6", "5", "7", "4"], correct: 0 },
-    { q: "¿Qué representa la mediana?", options: ["El valor central", "El promedio", "El valor más alto", "El número más frecuente"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 1, 2, 2, 3, 4?", options: ["1", "2", "3", "4"], correct: 1 },
-    { q: "¿Cuál es la mediana de los datos: 5, 10, 15, 20, 25?", options: ["10", "15", "20", "25"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 6, 12, 18, 24?", options: ["15", "16", "18", "20"], correct: 0 },
-    { q: "¿Qué representa la media?", options: ["El promedio", "El valor más alto", "El número más frecuente", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 3, 3, 4, 5, 6?", options: ["3", "4", "5", "6"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 7, 8, 9, 10, 11?", options: ["8", "9", "10", "11"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 10, 20, 30, 40?", options: ["25", "30", "35", "20"], correct: 0 },
-    { q: "¿Qué representa la moda?", options: ["El número más frecuente", "El promedio", "El valor más alto", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 5, 5, 6, 7, 8?", options: ["5", "6", "7", "8"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 1, 3, 5, 7, 9?", options: ["3", "5", "7", "9"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 2, 4, 6, 8, 10?", options: ["6", "5", "7", "4"], correct: 0 },
-    { q: "¿Qué representa la mediana?", options: ["El valor central", "El promedio", "El valor más alto", "El número más frecuente"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 4, 4, 5, 6, 7?", options: ["4", "5", "6", "7"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 2, 4, 6, 8, 10?", options: ["4", "6", "8", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 3, 6, 9, 12?", options: ["7.5", "8", "9", "6"], correct: 0 },
-    { q: "¿Qué representa la moda?", options: ["El número más frecuente", "El promedio", "El valor más alto", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 5, 5, 6, 7, 8?", options: ["5", "6", "7", "8"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 1, 3, 5, 7, 9?", options: ["3", "5", "7", "9"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 2, 4, 6, 8, 10?", options: ["6", "5", "7", "4"], correct: 0 },
-    { q: "¿Qué representa la media?", options: ["El promedio", "El valor más alto", "El número más frecuente", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 3, 3, 4, 5, 6?", options: ["3", "4", "5", "6"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 8, 9, 9, 10, 11?", options: ["8", "9", "10", "11"], correct: 1 },
-    { q: "¿Cuál es la mediana de los datos: 2, 4, 6, 8, 10?", options: ["4", "6", "8", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 3, 6, 9, 12?", options: ["7.5", "8", "9", "6"], correct: 0 },
-    { q: "¿Qué representa la moda?", options: ["El número más frecuente", "El promedio", "El valor más alto", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 5, 5, 6, 7, 8?", options: ["5", "6", "7", "8"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 1, 3, 5, 7, 9?", options: ["3", "5", "7", "9"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 2, 4, 6, 8, 10?", options: ["6", "5", "7", "4"], correct: 0 },
-    { q: "¿Qué representa la media?", options: ["El promedio", "El valor más alto", "El número más frecuente", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 3, 3, 4, 5, 6?", options: ["3", "4", "5", "6"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 7, 8, 9?", options: ["7", "8", "9", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 10, 20, 30?", options: ["20", "25", "15", "30"], correct: 0 },
-    { q: "¿Qué representa la mediana?", options: ["El valor central", "El promedio", "El valor más alto", "El número más frecuente"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 1, 2, 2, 3, 4?", options: ["1", "2", "3", "4"], correct: 1 },
-    { q: "¿Cuál es la mediana de los datos: 6, 8, 10, 12, 14?", options: ["8", "10", "12", "14"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 5, 10, 15, 20?", options: ["12.5", "13", "14", "15"], correct: 0 },
-    { q: "¿Qué representa la moda?", options: ["El número más frecuente", "El promedio", "El valor más alto", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 4, 4, 5, 6, 7?", options: ["4", "5", "6", "7"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 2, 4, 6, 8, 10?", options: ["4", "6", "8", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 3, 6, 9, 12?", options: ["7.5", "8", "9", "6"], correct: 0 },
-    { q: "¿Qué representa la media?", options: ["El promedio", "El valor más alto", "El número más frecuente", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 5, 5, 6, 7, 8?", options: ["5", "6", "7", "8"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 1, 3, 5, 7, 9?", options: ["3", "5", "7", "9"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 2, 4, 6, 8, 10?", options: ["6", "5", "7", "4"], correct: 0 },
-    { q: "¿Qué representa la mediana?", options: ["El valor central", "El promedio", "El valor más alto", "El número más frecuente"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 3, 3, 4, 5, 6?", options: ["3", "4", "5", "6"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 7, 8, 9?", options: ["7", "8", "9", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 10, 20, 30?", options: ["20", "25", "15", "30"], correct: 0 },
-    { q: "¿Qué representa la moda?", options: ["El número más frecuente", "El promedio", "El valor más alto", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 1, 1, 2, 3, 4?", options: ["1", "2", "3", "4"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 6, 8, 10, 12, 14?", options: ["8", "10", "12", "14"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 5, 10, 15, 20?", options: ["12.5", "13", "14", "15"], correct: 0 },
-    { q: "¿Qué representa la mediana?", options: ["El valor central", "El promedio", "El valor más alto", "El número más frecuente"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 4, 4, 5, 6, 7?", options: ["4", "5", "6", "7"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 2, 4, 6, 8, 10?", options: ["4", "6", "8", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 3, 6, 9, 12?", options: ["7.5", "8", "9", "6"], correct: 0 },
-    { q: "¿Qué representa la moda?", options: ["El número más frecuente", "El promedio", "El valor más alto", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 5, 5, 6, 7, 8?", options: ["5", "6", "7", "8"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 1, 3, 5, 7, 9?", options: ["3", "5", "7", "9"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 2, 4, 6, 8, 10?", options: ["6", "5", "7", "4"], correct: 0 },
-    { q: "¿Qué representa la media?", options: ["El promedio", "El valor más alto", "El número más frecuente", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 3, 3, 4, 5, 6?", options: ["3", "4", "5", "6"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 7, 8, 9?", options: ["7", "8", "9", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 10, 20, 30?", options: ["20", "25", "15", "30"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 6, 7, 7, 8, 9?", options: ["6", "7", "8", "9"], correct: 1 },
-    { q: "¿Cuál es la mediana de los datos: 2, 4, 6, 8, 10?", options: ["4", "6", "8", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 5, 10, 15, 20?", options: ["12.5", "13", "14", "15"], correct: 0 },
-    { q: "¿Qué representa la moda?", options: ["El número más frecuente", "El promedio", "El valor más alto", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 2, 2, 3, 4, 5?", options: ["2", "3", "4", "5"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 10, 20, 30, 40, 50?", options: ["20", "30", "40", "50"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 6, 12, 18, 24?", options: ["15", "16", "18", "20"], correct: 0 },
-    { q: "¿Qué representa la mediana?", options: ["El valor central", "El promedio", "El valor más alto", "El número más frecuente"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 9, 9, 10, 11, 12?", options: ["9", "10", "11", "12"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 3, 6, 9?", options: ["3", "6", "9", "4.5"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 2, 4, 6, 8, 10?", options: ["6", "5", "7", "4"], correct: 0 },
-    { q: "¿Qué representa la media?", options: ["El promedio", "El valor más alto", "El número más frecuente", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 4, 4, 5, 6, 7?", options: ["4", "5", "6", "7"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 5, 10, 15, 20, 25?", options: ["10", "15", "20", "25"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 3, 6, 9, 12?", options: ["7.5", "8", "9", "6"], correct: 0 },
-    { q: "¿Qué representa la moda?", options: ["El número más frecuente", "El promedio", "El valor más alto", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 1, 2, 2, 3, 4?", options: ["1", "2", "3", "4"], correct: 1 },
-    { q: "¿Cuál es la mediana de los datos: 6, 8, 10, 12, 14?", options: ["8", "10", "12", "14"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 5, 10, 15, 20?", options: ["12.5", "13", "14", "15"], correct: 0 },
-    { q: "¿Qué representa la mediana?", options: ["El valor central", "El promedio", "El valor más alto", "El número más frecuente"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 3, 3, 4, 5, 6?", options: ["3", "4", "5", "6"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 7, 8, 9?", options: ["7", "8", "9", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 10, 20, 30?", options: ["20", "25", "15", "30"], correct: 0 },
-    { q: "¿Qué representa la moda?", options: ["El número más frecuente", "El promedio", "El valor más alto", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 1, 1, 2, 3, 4?", options: ["1", "2", "3", "4"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 2, 4, 6, 8, 10?", options: ["4", "6", "8", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 3, 6, 9, 12?", options: ["7.5", "8", "9", "6"], correct: 0 },
-    { q: "¿Qué representa la media?", options: ["El promedio", "El valor más alto", "El número más frecuente", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 5, 5, 6, 7, 8?", options: ["5", "6", "7", "8"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 1, 3, 5, 7, 9?", options: ["3", "5", "7", "9"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 2, 4, 6, 8, 10?", options: ["6", "5", "7", "4"], correct: 0 },
-    { q: "¿Qué representa la mediana?", options: ["El valor central", "El promedio", "El valor más alto", "El número más frecuente"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 3, 3, 4, 5, 6?", options: ["3", "4", "5", "6"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 7, 8, 9?", options: ["7", "8", "9", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 10, 20, 30?", options: ["20", "25", "15", "30"], correct: 0 },
-    { q: "¿Qué representa la moda?", options: ["El número más frecuente", "El promedio", "El valor más alto", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 2, 2, 3, 4, 5?", options: ["2", "3", "4", "5"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 10, 20, 30, 40, 50?", options: ["20", "30", "40", "50"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 6, 12, 18, 24?", options: ["15", "16", "18", "20"], correct: 0 },
-    { q: "¿Qué representa la mediana?", options: ["El valor central", "El promedio", "El valor más alto", "El número más frecuente"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 9, 9, 10, 11, 12?", options: ["9", "10", "11", "12"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 3, 6, 9?", options: ["3", "6", "9", "4.5"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 2, 4, 6, 8, 10?", options: ["6", "5", "7", "4"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 2, 3, 3, 4, 5?", options: ["2", "3", "4", "5"], correct: 1 },
-    { q: "¿Cuál es la mediana de los datos: 1, 3, 5, 7, 9?", options: ["3", "5", "7", "9"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 4, 8, 12, 16?", options: ["10", "12", "14", "8"], correct: 0 },
-    { q: "¿Qué representa la moda?", options: ["El número más frecuente", "El promedio", "El valor más alto", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 6, 6, 7, 8, 9?", options: ["6", "7", "8", "9"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 2, 4, 6, 8, 10?", options: ["4", "6", "8", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 5, 10, 15, 20, 25?", options: ["15", "16", "17", "18"], correct: 0 },
-    { q: "¿Qué representa la mediana?", options: ["El valor central", "El promedio", "El valor más alto", "El número más frecuente"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 1, 1, 2, 3, 4?", options: ["1", "2", "3", "4"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 10, 20, 30, 40, 50?", options: ["20", "30", "40", "50"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 6, 12, 18, 24?", options: ["15", "16", "18", "20"], correct: 0 },
-    { q: "¿Qué representa la media?", options: ["El promedio", "El valor más alto", "El número más frecuente", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 3, 3, 4, 5, 6?", options: ["3", "4", "5", "6"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 7, 8, 9?", options: ["7", "8", "9", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 10, 20, 30?", options: ["20", "25", "15", "30"], correct: 0 },
-    { q: "¿Qué representa la moda?", options: ["El número más frecuente", "El promedio", "El valor más alto", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 4, 4, 5, 6, 7?", options: ["4", "5", "6", "7"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 2, 4, 6, 8, 10?", options: ["4", "6", "8", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 3, 6, 9, 12?", options: ["7.5", "8", "9", "6"], correct: 0 },
-    { q: "¿Qué representa la mediana?", options: ["El valor central", "El promedio", "El valor más alto", "El número más frecuente"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 5, 5, 6, 7, 8?", options: ["5", "6", "7", "8"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 1, 3, 5, 7, 9?", options: ["3", "5", "7", "9"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 2, 4, 6, 8, 10?", options: ["6", "5", "7", "4"], correct: 0 },
-    { q: "¿Qué representa la media?", options: ["El promedio", "El valor más alto", "El número más frecuente", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 3, 3, 4, 5, 6?", options: ["3", "4", "5", "6"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 7, 8, 9?", options: ["7", "8", "9", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 10, 20, 30?", options: ["20", "25", "15", "30"], correct: 0 },
-    { q: "¿Qué representa la moda?", options: ["El número más frecuente", "El promedio", "El valor más alto", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 1, 1, 2, 3, 4?", options: ["1", "2", "3", "4"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 6, 8, 10, 12, 14?", options: ["8", "10", "12", "14"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 5, 10, 15, 20?", options: ["12.5", "13", "14", "15"], correct: 0 },
-    { q: "¿Qué representa la mediana?", options: ["El valor central", "El promedio", "El valor más alto", "El número más frecuente"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 4, 4, 5, 6, 7?", options: ["4", "5", "6", "7"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 2, 4, 6, 8, 10?", options: ["4", "6", "8", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 3, 6, 9, 12?", options: ["7.5", "8", "9", "6"], correct: 0 },
-    { q: "¿Qué representa la moda?", options: ["El número más frecuente", "El promedio", "El valor más alto", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 5, 5, 6, 7, 8?", options: ["5", "6", "7", "8"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 1, 3, 5, 7, 9?", options: ["3", "5", "7", "9"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 2, 4, 6, 8, 10?", options: ["6", "5", "7", "4"], correct: 0 },
-    { q: "¿Qué representa la mediana?", options: ["El valor central", "El promedio", "El valor más alto", "El número más frecuente"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 3, 3, 4, 5, 6?", options: ["3", "4", "5", "6"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 7, 8, 9?", options: ["7", "8", "9", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 10, 20, 30?", options: ["20", "25", "15", "30"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 2, 2, 3, 4, 5?", options: ["2", "3", "4", "5"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 1, 2, 3, 4, 5?", options: ["2", "3", "4", "5"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 5, 10, 15?", options: ["10", "12", "8", "9"], correct: 0 },
-    { q: "¿Qué representa la moda?", options: ["El número más frecuente", "La suma total", "El valor medio", "El valor mínimo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 7, 8, 8, 9, 10?", options: ["7", "8", "9", "10"], correct: 1 },
-    { q: "¿Cuál es la mediana de los datos: 2, 4, 6, 8, 10?", options: ["4", "6", "8", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 3, 6, 9?", options: ["6", "5", "7", "4"], correct: 0 },
-    { q: "¿Qué representa la media?", options: ["El valor más alto", "El valor más bajo", "El promedio", "El número más frecuente"], correct: 2 },
-    { q: "¿Cuál es la moda de los datos: 1, 2, 2, 3, 4?", options: ["1", "2", "3", "4"], correct: 1 },
-    { q: "¿Cuál es la mediana de los datos: 10, 20, 30?", options: ["10", "20", "30", "15"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 5, 10, 15?", options: ["10", "12", "8", "9"], correct: 0 },
-    { q: "¿Qué valor representa la moda en 7, 8, 8, 9, 10?", options: ["7", "8", "9", "10"], correct: 1 },
-    { q: "¿Cuál es la mediana de los datos: 2, 4, 6, 8, 10?", options: ["4", "6", "8", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 1, 2, 3, 4, 5?", options: ["3", "2", "4", "5"], correct: 0 },
-    { q: "¿Qué representa la mediana?", options: ["El valor más alto", "El valor más bajo", "El valor central", "El número más frecuente"], correct: 2 },
-    { q: "¿Cuál es la moda de los datos: 6, 6, 7, 8, 9?", options: ["6", "7", "8", "9"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 3, 5, 7?", options: ["3", "5", "7", "6"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 4, 8, 12?", options: ["8", "9", "10", "7"], correct: 0 },
-    { q: "¿Qué valor representa la moda en 2, 2, 3, 4, 5?", options: ["2", "3", "4", "5"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 5, 10, 15, 20, 25?", options: ["10", "15", "20", "25"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 6, 12, 18?", options: ["12", "13", "14", "15"], correct: 0 },
-    { q: "¿Qué representa la moda?", options: ["El valor más alto", "El valor más bajo", "El número más frecuente", "El promedio"], correct: 2 },
-    { q: "¿Cuál es la moda de los datos: 9, 9, 10, 11, 12?", options: ["9", "10", "11", "12"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 1, 2, 3, 4, 5?", options: ["2", "3", "4", "5"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 2, 4, 6, 8?", options: ["5", "6", "7", "4"], correct: 0 },
-    { q: "¿Qué representa la media?", options: ["El promedio", "El valor más alto", "El número más frecuente", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 3, 3, 4, 5, 6?", options: ["3", "4", "5", "6"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 7, 8, 9?", options: ["7", "8", "9", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 10, 20, 30?", options: ["20", "25", "15", "30"], correct: 0 },
-    { q: "¿Qué valor representa la moda en 1, 1, 2, 3, 4?", options: ["1", "2", "3", "4"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 6, 8, 10, 12, 14?", options: ["8", "10", "12", "14"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 5, 10, 15, 20?", options: ["12.5", "13", "14", "15"], correct: 0 },
-    { q: "¿Qué representa la mediana?", options: ["El valor central", "El promedio", "El valor más alto", "El número más frecuente"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 4, 4, 5, 6, 7?", options: ["4", "5", "6", "7"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 2, 4, 6, 8, 10?", options: ["4", "6", "8", "10"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 3, 6, 9, 12?", options: ["7.5", "8", "9", "6"], correct: 0 },
-    { q: "¿Qué representa la moda?", options: ["El número más frecuente", "El promedio", "El valor más alto", "El valor más bajo"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 5, 5, 6, 7, 8?", options: ["5", "6", "7", "8"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 1, 3, 5, 7, 9?", options: ["3", "5", "7", "9"], correct: 1 },
-    { q: "¿Cuál es la media de los datos: 2, 4, 6, 8, 10?", options: ["6", "5", "7", "4"], correct: 0 },
-    { q: "¿Qué representa la mediana?", options: ["El valor central", "El promedio", "El valor más alto", "El número más frecuente"], correct: 0 },
-    { q: "¿Cuál es la moda de los datos: 3, 3, 4, 5, 6?", options: ["3", "4", "5", "6"], correct: 0 },
-    { q: "¿Cuál es la mediana de los datos: 7, 8, 9?", options: ["7", "8", "9", "10"], correct: 1 }
-           ]
-      }
-    }
-  }
-};
+        <div class="question-box">
+            <p id="questionText">Cargando pregunta...</p>
+        </div>
+        
+        <div class="options" onclick="handleOptionClick(event)">
+            <button data-option-index="0"></button>
+            <button data-option-index="1"></button>
+            <button data-option-index="2"></button>
+            <button data-option-index="3"></button>
+        </div>
 
-// --- Navegación ---
-function hideAllScreens(){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); }
-function goToSubjectFromLogin(){
-  const name = document.getElementById('studentNameLogin').value.trim();
-  const age = document.getElementById('studentAgeLogin').value.trim();
-  if(!name || !age){ alert('Introduce tu nombre y edad'); return;}
-  hideAllScreens(); 
-  document.getElementById('subjectScreen').classList.add('active');
-}
-function goToLogin(){ hideAllScreens(); document.getElementById('loginScreen').classList.add('active'); }
-function goToSubjectFromExercise(){ hideAllScreens(); document.getElementById('subjectScreen').classList.add('active'); }
-function goToReview(){ hideAllScreens(); document.getElementById('reviewScreen').classList.add('active'); updateReviewScreen(); }
-function backToExercises(){ hideAllScreens(); document.getElementById('exerciseScreen').classList.add('active'); }
+        <button onclick="nextQuestion()" style="padding: 15px; margin-top: 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; width: 80%; cursor: pointer;">Siguiente Pregunta</button>
+        <button onclick="goToReview()" style="padding: 10px; margin-top: 10px; background-color: #6c757d; color: white; border: none; border-radius: 5px; width: 80%; cursor: pointer;">Terminar Sesión (Revisar)</button>
+    </div>
 
-// --- Selección de temas según asignatura y evaluación ---
-document.getElementById('subjectChoose').addEventListener('change', populateTopics);
-document.getElementById('evaluationChoose').addEventListener('change', populateTopics);
+    <div id="gameScreen" class="screen">
+        <h2>¡FELICIDADES, Carla! ¡PREMIO! 🎉</h2>
+        <p>Has subido al Nivel <span id="rewardLevel"></span>. Tómate un descanso y ¡a jugar!</p>
+        
+        <div id="arcanoidGameContainer">
+            <canvas id="juegoCanvas" width="320" height="480"></canvas>
+        </div>
 
-function populateTopics(){
-  const subject = document.getElementById('subjectChoose').value;
-  const evaluation = document.getElementById('evaluationChoose').value;
-  const topicSelect = document.getElementById('topicChoose');
-  topicSelect.innerHTML = '<option value="">--Selecciona Tema--</option>';
-  if(subject && evaluation && curriculum[subject]["1ºESO"][evaluation]){
-    Object.keys(curriculum[subject]["1ºESO"][evaluation]).forEach(t=>{
-      const o=document.createElement('option'); o.value=t; o.text=t; topicSelect.add(o);
-    });
-  }
-}
+        <div id="memoryGameContainer" style="font-family: 'Comic Sans MS', cursive, sans-serif;">
+            <header>
+                <h1>Juego de Pares de Emojis</h1>
+                <p>Toca dos cartas para encontrar las parejas. ¡Hay 5 pares!</p>
+            </header>
+            <main class="game-container-memory">
+            </main>
+            <div id="mensaje-victoria-memory" style="display: none;">
+                <h2>¡GANASTE! 🏆 Eres increíblemente inteligente.</h2>
+                <button id="restartMemory" style="padding: 10px 20px; font-size: 1.2em; cursor: pointer; margin-top: 10px; background-color: #e91e63; color: white; border: none; border-radius: 5px;">Jugar de nuevo</button>
+            </div>
+        </div>
+        
+        <div id="gameControls">
+            <button id="endGameButton" onclick="endGame()" style="padding: 10px; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">Volver a los Ejercicios</button>
+        </div>
+        
+    </div>
 
-// --- Ejercicios ---
-function startExercises() {
-  const subject = document.getElementById('subjectChoose').value;
-  const evaluation = document.getElementById('evaluationChoose').value;
-  const topic = document.getElementById('topicChoose').value;
-  if(!subject || !evaluation || !topic){ alert('Selecciona asignatura, evaluación y tema'); return; }
-  hideAllScreens();
-  document.getElementById('exerciseScreen').classList.add('active');
-  document.getElementById('subjectTopic').innerText=`${subject} - ${topic}`;
-  points = 0; level = 1; updatePoints(); updateLevel(); completedExercises=[];
-  currentExercises = curriculum[subject]["1ºESO"][evaluation][topic];
-  currentQ = 0;
-  loadQuestion();
-}
+    <div id="reviewScreen" class="screen">
+        <h2>Revisión de la Sesión</h2>
+        <p>Puntuación Final: <strong id="finalPoints">0</strong> puntos.</p>
+        <p>Nivel Alcanzado: <strong id="finalLevel">1</strong></p>
+        <h3>Preguntas Acertadas:</h3>
+        <div id="reviewQuestions" style="text-align: left; padding: 0 20px;">
+            </div>
+        <button onclick="goToSubjectFromExercise()" style="padding: 15px; margin-top: 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; width: 80%; cursor: pointer;">Elegir Otro Tema</button>
+    </div>
 
-function loadQuestion(){
-  const q = currentExercises[currentQ];
-  document.getElementById('questionText').innerText = q.q;
-  const btns = document.querySelectorAll('.options button');
-  btns.forEach((btn,i)=>{
-    btn.innerText = q.options[i];
-    btn.className = '';
-  });
-}
+    <script>
+        // ===================================================================
+        // 1. ESTRUCTURA CURRICULAR (TU CÓDIGO)
+        // ===================================================================
+        const curriculum = {
+            "Matemáticas": {
+                "1ºESO": {
+                    "1ª evaluación": {
+                        "Números y Operaciones": [
+                            { q: "¿Cómo se lee 1.345.000?", options: ["Un millón trescientos cuarenta y cinco mil", "Trece millones", "Ciento treinta y cuatro mil", "Un billón"], correct: 0 },
+                            { q: "Valor posicional del 7 en 1.705:", options: ["Unidades", "Decenas", "Centenas", "Unidades de Millar"], correct: 2 },
+                            { q: "¿Cuál es el resultado de 100 - 45?", options: ["65", "55", "45", "145"], correct: 1 },
+                            { q: "¿Cuál es el resultado de 12 × 5?", options: ["60", "50", "17", "70"], correct: 0 },
+                            { q: "¿Cuál es el resultado de 81 / 9?", options: ["7", "8", "9", "10"], correct: 2 },
+                            { q: "El valor posicional del 2 en 2.050.000 es...", options: ["Unidad de Millar", "Centena de Millar", "Unidad de millón", "Decena de Millar"], correct: 2 },
+                            { q: "¿Cuánto es 35 + 15 + 10?", options: ["50", "60", "70", "40"], correct: 1 },
+                            { q: "¿Cuánto es 10 × 10 × 10?", options: ["100", "30", "1.000", "100.000"], correct: 2 },
+                            { q: "¿Cuánto es 48 / 6?", options: ["7", "8", "6", "9"], correct: 1 },
+                            { q: "El número 9 es divisible por...", options: ["2", "4", "3", "5"], correct: 2 },
+                            { q: "El número 12 es múltiplo de...", options: ["5", "7", "4", "9"], correct: 2 },
+                            { q: "Un número primo es aquel que tiene solo dos divisores:", options: ["Él mismo y el 1", "El 2 y el 3", "Cualquier par de números", "Números impares"], correct: 0 },
+                            { q: "¿Cuál de estos es un número primo?", options: ["4", "9", "10", "7"], correct: 3 },
+                            { q: "¿Cuál de estos es un número compuesto?", options: ["3", "5", "8", "11"], correct: 2 },
+                            { q: "Múltiplos de 5, el siguiente a 20 es:", options: ["21", "25", "30", "15"], correct: 1 },
+                            { q: "Divisores de 10:", options: ["1, 2, 5, 10", "1, 5, 10", "1, 2, 4, 5", "5, 10"], correct: 0 },
+                            { q: "M.C.D de 4 y 6:", options: ["24", "12", "2", "4"], correct: 2 },
+                            { q: "m.c.m de 2 y 3:", options: ["1", "6", "3", "2"], correct: 1 },
+                            { q: "¿Cuánto es 5²?", options: ["10", "7", "25", "52"], correct: 2 },
+                            { q: "Raíz cuadrada de 9:", options: ["2", "3", "4", "81"], correct: 1 },
+                            { q: "La suma de los números 125 y 75 es:", options: ["100", "200", "50", "25"], correct: 1 },
+                            { q: "La diferencia entre 50 y 15 es:", options: ["65", "45", "35", "50"], correct: 2 },
+                            { q: "El producto de 9 y 8 es:", options: ["17", "72", "64", "81"], correct: 1 },
+                            { q: "El cociente de 40 entre 5 es:", options: ["6", "7", "8", "9"], correct: 2 },
+                            { q: "¿Cuál es el valor posicional de la primera cifra de la izquierda en 5.678?", options: ["Centenas", "Decenas de Millar", "Unidades de Millar", "Decenas"], correct: 2 },
+                            { q: "Para que un número sea divisible por 10 debe terminar en:", options: ["5", "Número par", "0", "Cualquier número"], correct: 2 },
+                            { q: "Un número es múltiplo de 2 si es:", options: ["Impar", "Par", "Termina en 5", "Primo"], correct: 1 },
+                            { q: "El número 15 es divisible por:", options: ["2", "4", "5", "6"], correct: 2 },
+                            { q: "Raíz cuadrada de 49:", options: ["6", "7", "8", "9"], correct: 1 },
+                            { q: "¿Cuánto es 3³?", options: ["9", "27", "6", "81"], correct: 1 },
+                            { q: "m.c.m de 4 y 5:", options: ["9", "10", "20", "40"], correct: 2 },
+                            { q: "M.C.D de 10 y 15:", options: ["5", "15", "10", "30"], correct: 0 },
+                            { q: "El número 2 es:", options: ["Compuesto", "Impar", "El único primo par", "Múltiplo de 4"], correct: 2 },
+                            { q: "El número 1 es:", options: ["Primo", "Compuesto", "Neutro", "Un divisor universal"], correct: 3 },
+                            { q: "Divisores de 7:", options: ["1, 7", "1, 2, 7", "7, 14", "1, 3, 7"], correct: 0 },
+                            { q: "¿Cuánto es 20 + 5 × 2 (Operaciones combinadas)?", options: ["50", "22", "30", "25"], correct: 2 },
+                            { q: "¿Cuánto es (10 - 2) × 3?", options: ["8", "24", "16", "26"], correct: 1 },
+                            { q: "Raíz cuadrada de 100:", options: ["100", "50", "10", "25"], correct: 2 },
+                            { q: "El resultado de 15 / 3 + 4 es:", options: ["7", "9", "5", "8"], correct: 3 },
+                            { q: "¿Cuál es el valor de 10⁴?", options: ["100", "10.000", "1.000", "40"], correct: 1 },
+                        ]
+                    },
+                    "2ª evaluación": {
+                        "Fracciones": [
+                            // Bloque 1: Lectura, Representación y Comparación
+                            { q: "¿Cómo se lee 3/5?", options: ["Tres quinto", "Tres quintos", "Tres partido cinco", "Cinco tercios"], correct: 1 },
+                            { q: "¿Cómo se lee 1/2?", options: ["Un dos", "Un medio", "La mitad", "Dos uno"], correct: 1 },
+                            { q: "¿Cuál es el numerador en 4/7?", options: ["7", "4", "11", "3"], correct: 1 },
+                            { q: "¿Cuál es el denominador en 5/8?", options: ["5", "8", "13", "3"], correct: 1 },
+                            { q: "¿Cuál es mayor: 3/4 o 1/4?", options: ["1/4", "3/4", "Son iguales", "Falta dato"], correct: 1 },
+                            { q: "¿Cuál es menor: 2/5 o 4/5?", options: ["4/5", "2/5", "Son iguales", "Falta dato"], correct: 1 },
+                            { q: "¿Cómo se lee 7/10?", options: ["Siete décimo", "Siete décimos", "Diez séptimos", "Siete diez"], correct: 1 },
+                            { q: "¿Cuál es la fracción para un cuarto?", options: ["4/1", "1/4", "1/2", "2/4"], correct: 1 },
+                            { q: "¿Qué fracción es 0.5?", options: ["1/4", "1/3", "1/2", "1/5"], correct: 2 },
+                            { q: "¿Cuál es mayor: 1/2 o 1/3?", options: ["1/3", "1/2", "Son iguales", "Falta dato"], correct: 1 },
+                            { q: "¿Cuál es menor: 2/7 o 2/3?", options: ["2/3", "2/7", "Son iguales", "Falta dato"], correct: 1 },
+                            { q: "Fracción Propia (Num < Den):", options: ["5/3", "3/5", "5/5", "6/2"], correct: 1 },
+                            { q: "Fracción Impropia (Num > Den):", options: ["1/2", "3/4", "4/3", "2/5"], correct: 2 },
+                            { q: "¿Cómo se lee 2/3?", options: ["Dos tercios", "Tres medios", "Dos tres", "Dos terzos"], correct: 0 },
+                            { q: "¿Cuál es el numerador en 8/9?", options: ["9", "8", "17", "1"], correct: 1 },
+                            { q: "¿Cuál es mayor: 5/6 o 4/6?", options: ["4/6", "5/6", "Son iguales", "Falta dato"], correct: 1 },
+                            { q: "¿Cuál es menor: 3/10 o 7/10?", options: ["7/10", "3/10", "Son iguales", "Falta dato"], correct: 1 },
+                            { q: "El número 1 se representa como:", options: ["1/2", "3/4", "5/5", "2/1"], correct: 2 },
+                            { q: "Fracción con Denominador 6:", options: ["6/1", "1/6", "6", "1/2"], correct: 1 },
+                            { q: "¿Cuál es mayor: 5/7 o 3/7?", options: ["3/7", "5/7", "Son iguales", "Falta dato"], correct: 1 },
+                            { q: "¿Cuál es menor: 1/5 o 1/8?", options: ["1/5", "1/8", "Son iguales", "Falta dato"], correct: 1 },
+                            { q: "¿Cómo se lee 9/4?", options: ["Nueve cuartos", "Cuatro novenos", "Nueve cuatro", "Cuatro cuartos"], correct: 0 },
+                            { q: "¿Cuál es el denominador en 1/9?", options: ["1", "9", "0", "10"], correct: 1 },
+                            { q: "Fracción equivalente a 1/1 (un entero):", options: ["1/2", "2/3", "4/4", "3/1"], correct: 2 },
+                            { q: "¿Cuál es mayor: 5/12 o 7/12?", options: ["5/12", "7/12", "Son iguales", "Falta dato"], correct: 1 },
+                            { q: "¿Cuál es menor: 2/9 o 2/5?", options: ["2/5", "2/9", "Son iguales", "Falta dato"], correct: 1 },
 
-function checkAnswer(btn){
-  const q = currentExercises[currentQ];
-  const idx = [...btn.parentNode.children].indexOf(btn);
-  if(idx === q.correct){
-    btn.classList.add('correct');
-    points++;
-    completedExercises.push(q.q);
-    updatePoints(); updateLevel(); updateMedals();
-  } else {
-    btn.classList.add('wrong');
-  }
-}
+                            // Bloque 2: Fracciones Equivalentes y Simplificación
+                            { q: "Fracción equivalente a 1/2:", options: ["3/4", "2/4", "1/3", "4/6"], correct: 1 },
+                            { q: "Fracción equivalente a 1/3:", options: ["2/6", "1/6", "2/5", "3/4"], correct: 0 },
+                            { q: "Simplifica 5/10 (dividir por 5):", options: ["5/2", "1/5", "1/2", "1/1"], correct: 2 },
+                            { q: "Simplifica 6/9 (dividir por 3):", options: ["3/6", "2/3", "6/3", "1/9"], correct: 1 },
+                            { q: "Fracción equivalente a 3/3:", options: ["1/3", "3/1", "4/4", "6/9"], correct: 2 },
+                            { q: "Fracción equivalente a 2/5:", options: ["4/5", "4/10", "2/10", "5/2"], correct: 1 },
+                            { q: "Simplifica 8/12 (dividir por 4):", options: ["2/3", "4/6", "1/2", "8/4"], correct: 0 },
+                            { q: "Fracción equivalente a 1/4:", options: ["2/8", "1/8", "2/4", "4/16"], correct: 0 },
+                            { q: "Simplifica 4/6 (dividir por 2):", options: ["2/3", "1/3", "4/2", "3/2"], correct: 0 },
+                            { q: "Fracción equivalente a 3/1:", options: ["3/3", "1/3", "6/2", "3/6"], correct: 2 },
+                            { q: "Fracción equivalente a 4/8:", options: ["1/4", "1/2", "2/8", "3/4"], correct: 1 },
+                            { q: "Simplifica 10/10 (dividir por 10):", options: ["1/5", "1/1", "2/1", "10/1"], correct: 1 },
+                            { q: "Fracción equivalente a 2/2:", options: ["2/4", "1/1", "3/2", "2/1"], correct: 1 },
+                            { q: "Fracción equivalente a 5/6:", options: ["10/12", "5/12", "6/5", "10/6"], correct: 0 },
+                            { q: "Simplifica 12/15 (dividir por 3):", options: ["4/5", "3/5", "12/5", "5/4"], correct: 0 },
+                            { q: "Fracción equivalente a 7/7:", options: ["14/14", "7/1", "1/7", "7/14"], correct: 0 },
+                            { q: "Fracción equivalente a 1/5:", options: ["2/10", "1/10", "2/5", "5/10"], correct: 0 },
+                            { q: "Simplifica 20/30 (dividir por 10):", options: ["1/3", "2/3", "3/2", "1/2"], correct: 1 },
+                            { q: "Fracción equivalente a 3/2:", options: ["6/4", "3/4", "2/3", "4/6"], correct: 0 },
+                            { q: "Simplifica 14/21 (dividir por 7):", options: ["2/3", "3/4", "1/2", "7/3"], correct: 0 },
+                            { q: "Fracción equivalente a 1/6:", options: ["2/12", "1/12", "6/1", "2/6"], correct: 0 },
+                            { q: "Simplifica 9/12 (dividir por 3):", options: ["1/4", "3/4", "9/3", "4/3"], correct: 1 },
+                            { q: "Fracción equivalente a 4/5:", options: ["8/10", "4/10", "5/4", "10/8"], correct: 0 },
+                            { q: "Simplifica 15/20 (dividir por 5):", options: ["3/4", "4/3", "5/4", "15/5"], correct: 0 },
+                            { q: "Fracción equivalente a 1/10:", options: ["2/20", "1/20", "10/1", "2/10"], correct: 0 },
+                            { q: "Simplifica 2/8 (dividir por 2):", options: ["1/4", "1/2", "2/4", "2/1"], correct: 0 },
 
-function nextQuestion(){
-  currentQ = (currentQ+1) % currentExercises.length;
-  loadQuestion();
-}
+                            // Bloque 3: Operaciones con Fracciones (Mismo denominador y multiplicación simple)
+                            { q: "¿Cuánto es 1/5 + 2/5?", options: ["3/10", "3/5", "1/5", "2/10"], correct: 1 },
+                            { q: "¿Cuánto es 4/7 - 1/7?", options: ["3/7", "5/7", "3/0", "4/1"], correct: 0 },
+                            { q: "¿Cuánto es 1/4 × 2?", options: ["2/8", "2/4", "1/8", "3/4"], correct: 1 },
+                            { q: "¿Cuánto es 2/3 + 1/3?", options: ["3/6", "3/3", "1/3", "2/3"], correct: 1 },
+                            { q: "¿Cuánto es 5/6 - 2/6?", options: ["3/0", "3/6", "7/6", "5/2"], correct: 1 },
+                            { q: "¿Cuánto es 3/5 × 2?", options: ["6/10", "6/5", "3/10", "5/6"], correct: 1 },
+                            { q: "¿Cuánto es 3/8 + 4/8?", options: ["7/16", "7/8", "1/8", "7/0"], correct: 1 },
+                            { q: "¿Cuánto es 9/10 - 4/10?", options: ["5/10", "13/10", "5/0", "9/4"], correct: 0 },
+                            { q: "¿Cuánto es 1/10 × 3?", options: ["3/30", "3/10", "1/30", "4/10"], correct: 1 },
+                            { q: "¿Cuánto es 1/6 + 2/6?", options: ["3/12", "3/6", "1/6", "2/6"], correct: 1 },
+                            { q: "¿Cuánto es 7/9 - 5/9?", options: ["2/0", "12/9", "2/9", "7/5"], correct: 2 },
+                            { q: "¿Cuánto es 2/7 × 2?", options: ["4/14", "4/7", "2/14", "7/4"], correct: 1 },
+                            { q: "¿Cuánto es 5/11 + 3/11?", options: ["8/22", "8/11", "2/11", "5/3"], correct: 1 },
+                            { q: "¿Cuánto es 6/8 - 1/8?", options: ["5/0", "5/8", "7/8", "6/1"], correct: 1 },
+                            { q: "¿Cuánto es 4/9 × 2?", options: ["8/18", "8/9", "4/18", "9/8"], correct: 1 },
+                            { q: "¿Cuánto es 1/2 + 1/2?", options: ["2/4", "2/2", "1/2", "0/2"], correct: 1 },
+                            { q: "¿Cuánto es 10/10 - 3/10?", options: ["7/20", "7/10", "13/10", "7/0"], correct: 1 },
+                            { q: "¿Cuánto es 5/12 × 2?", options: ["10/24", "10/12", "5/24", "12/10"], correct: 1 },
+                            { q: "¿Cuánto es 1/8 + 1/8?", options: ["2/16", "2/8", "1/8", "0/8"], correct: 1 },
+                            { q: "¿Cuánto es 4/5 - 1/5?", options: ["3/0", "3/5", "5/5", "4/1"], correct: 1 },
+                            { q: "¿Cuánto es 1/7 × 5?", options: ["5/35", "5/7", "1/35", "7/5"], correct: 1 },
+                            { q: "¿Cuánto es 2/9 + 4/9?", options: ["6/18", "6/9", "2/9", "4/9"], correct: 1 },
+                        ]
+                    },
+                    "3ª evaluación": {
+                        "Estadística": [
+                            // Bloque 1: Definiciones y Reconocimiento
+                            { q: "El promedio de los datos es la...", options: ["Moda", "Mediana", "Media", "Frecuencia"], correct: 2 },
+                            { q: "El valor que más se repite es la...", options: ["Media", "Mediana", "Moda", "Promedio"], correct: 2 },
+                            { q: "El valor central de los datos es la...", options: ["Media", "Mediana", "Moda", "Frecuencia"], correct: 1 },
+                            { q: "¿Qué es el promedio?", options: ["El valor central", "La suma de datos/nº de datos", "El valor repetido", "El valor mayor"], correct: 1 },
+                            { q: "Para calcular la Mediana, primero hay que...", options: ["Sumar datos", "Dividir", "Ordenar datos", "Contar datos"], correct: 2 },
+                            { q: "La Media es sensible a valores...", options: ["Centrales", "Pequeños", "Extremos", "Repetidos"], correct: 2 },
+                            { q: "El valor 5 aparece 10 veces. Esto es la...", options: ["Media", "Mediana", "Moda", "Frecuencia"], correct: 3 },
+                            { q: "¿Qué medida se puede usar con datos NO numéricos (cualitativos)?", options: ["Media", "Mediana", "Moda", "Rango"], correct: 2 },
+                            { q: "En datos ordenados, la Mediana es la posición...", options: ["Inicial", "Final", "Central", "Mayor"], correct: 2 },
+                            { q: "La suma de datos entre el número de datos es la fórmula de la...", options: ["Moda", "Mediana", "Media", "Frecuencia"], correct: 2 },
+                            { q: "Un dato que aparece muchas veces está 'de'...", options: ["Mediana", "Promedio", "Moda", "Media"], correct: 2 },
+                            { q: "Si la lista de datos es par, la Mediana es la media de los dos valores...", options: ["Primeros", "Últimos", "Centrales", "Mayores"], correct: 2 },
+                            { q: "La Media representa el valor...", options: ["Máximo", "Típico/Promedio", "Mínimo", "Repetido"], correct: 1 },
+                            { q: "La Mediana divide la muestra en dos partes iguales: un 50% y un...", options: ["25%", "75%", "50%", "100%"], correct: 2 },
+                            { q: "Número de veces que se repite un dato (ni):", options: ["Mediana", "Moda", "Frecuencia absoluta", "Media"], correct: 2 },
+                            { q: "¿Qué medida representa el centro de gravedad de los datos?", options: ["Moda", "Mediana", "Media", "Rango"], correct: 2 },
+                            { q: "El dato con mayor Frecuencia Absoluta es la...", options: ["Media", "Mediana", "Moda", "Rango"], correct: 2 },
+                            { q: "Si los datos son: 1, 2, 3, 4, 5. ¿Necesitan ordenarse para la Media?", options: ["Sí", "No", "Solo si son impares", "Solo si son pares"], correct: 1 },
+                            { q: "Si los datos son: 1, 2, 3, 4, 5. ¿Necesitan ordenarse para la Mediana?", options: ["No", "Sí", "Solo si son impares", "Solo si son pares"], correct: 1 },
+                            { q: "El valor central se calcula después de...", options: ["Sumar", "Dividir", "Ordenar", "Multiplicar"], correct: 2 },
+                            { q: "La Moda puede tener más de un valor.", options: ["Falso", "Verdadero", "Solo si es impar", "Solo si es par"], correct: 1 },
+                            { q: "La Media siempre es uno de los datos de la lista.", options: ["Verdadero", "Falso", "A veces", "Nunca"], correct: 1 },
+                            { q: "¿Qué medida NO se ve afectada por un valor extremo (outlier)?", options: ["Media", "Mediana", "Moda", "Promedio"], correct: 1 },
+                            { q: "La suma de todos los datos dividida por la cantidad de datos es la...", options: ["Mediana", "Moda", "Media", "Frecuencia"], correct: 2 },
+                            { q: "Para calcular la Media, ¿se necesita ordenar los datos?", options: ["Sí", "No", "Solo a veces", "Depende"], correct: 1 },
+                            { q: "La medida más fácil de calcular es la...", options: ["Media", "Mediana", "Moda", "Rango"], correct: 2 },
 
-function updatePoints(){
-  document.getElementById('pointsDisplay').innerText=`Puntos: ${points}`;
-  const progress=Math.min((points%10)*10,100);
-  document.getElementById('progress').style.width=progress+'%';
-}
+                            // Bloque 2: Cálculo de la Media
+                            { q: "Media de 2, 4, 6:", options: ["3", "4", "5", "6"], correct: 1 },
+                            { q: "Media de 1, 1, 4:", options: ["1", "2", "3", "4"], correct: 1 },
+                            { q: "Media de 10, 20:", options: ["10", "15", "20", "30"], correct: 1 },
+                            { q: "Media de 5, 5, 5:", options: ["4", "5", "6", "15"], correct: 1 },
+                            { q: "Media de 1, 2, 3, 4:", options: ["2", "2.5", "3", "3.5"], correct: 1 },
+                            { q: "Media de 1, 5, 6:", options: ["3", "4", "5", "6"], correct: 1 },
+                            { q: "Media de 8, 8, 8, 8:", options: ["7", "8", "9", "32"], correct: 1 },
+                            { q: "Media de 2, 3, 4, 5, 6:", options: ["3", "4", "5", "6"], correct: 1 },
+                            { q: "Media de 0, 10:", options: ["0", "5", "10", "20"], correct: 1 },
+                            { q: "Media de 3, 3, 6:", options: ["3", "4", "5", "6"], correct: 1 },
+                            { q: "Media de 7, 7, 7, 7, 7:", options: ["6", "7", "8", "35"], correct: 1 },
+                            { q: "Media de 1, 2, 6:", options: ["2", "3", "4", "5"], correct: 1 },
+                            { q: "Media de 10, 30, 50:", options: ["20", "30", "40", "50"], correct: 1 },
+                            { q: "Media de 1, 1, 1, 1, 1:", options: ["0", "1", "2", "3"], correct: 1 },
+                            { q: "Media de 4, 5, 6:", options: ["4", "5", "6", "5.5"], correct: 1 },
+                            { q: "Media de 2, 8:", options: ["4", "5", "6", "10"], correct: 1 },
+                            { q: "Media de 1, 3, 5, 7:", options: ["3", "4", "5", "4.5"], correct: 1 },
+                            { q: "Media de 2, 2, 2, 2:", options: ["1", "2", "3", "4"], correct: 1 },
+                            { q: "Media de 2, 4, 8:", options: ["4", "4.67", "5", "14"], correct: 1 },
+                            { q: "Media de 9, 9, 9:", options: ["8", "9", "10", "27"], correct: 1 },
+                            { q: "Media de 1, 1, 1, 5:", options: ["1", "2", "3", "4"], correct: 1 },
+                            { q: "Media de 6, 7, 8:", options: ["6.5", "7", "7.5", "21"], correct: 1 },
+                            { q: "Media de 10, 10, 20:", options: ["10", "15", "20", "40"], correct: 1 },
+                            { q: "Media de 5, 10, 15:", options: ["10", "15", "20", "30"], correct: 0 },
+                            { q: "Media de 10, 10:", options: ["5", "10", "15", "20"], correct: 1 },
+                            { q: "Media de 1, 2, 7:", options: ["3", "4", "5", "10"], correct: 1 },
 
-function updateLevel(){
-  level = Math.floor(points/10)+1;
-  document.getElementById('levelDisplay').innerText=`Nivel: ${level}`;
-}
+                            // Bloque 3: Cálculo de Moda y Mediana
+                            { q: "Moda de 1, 2, 2, 3, 4:", options: ["1", "2", "3", "4"], correct: 1 },
+                            { q: "Mediana de 1, 2, 3:", options: ["1", "2", "3", "1.5"], correct: 1 },
+                            { q: "Moda de 5, 5, 6, 7, 8:", options: ["6", "5", "7", "8"], correct: 1 },
+                            { q: "Mediana de 1, 3, 5, 7:", options: ["3", "4", "5", "6"], correct: 1 },
+                            { q: "Moda de 10, 10, 20, 30:", options: ["20", "10", "30", "No hay"], correct: 1 },
+                            { q: "Mediana de 2, 4, 6, 8, 10:", options: ["4", "6", "8", "10"], correct: 1 },
+                            { q: "Moda de 4, 5, 6, 7:", options: ["4", "6", "7", "No hay"], correct: 3 },
+                            { q: "Mediana de 1, 5, 10:", options: ["1", "5", "10", "6"], correct: 1 },
+                            { q: "Moda de 1, 2, 3, 3, 3:", options: ["1", "2", "3", "No hay"], correct: 2 },
+                            { q: "Mediana de 10, 10, 20, 30:", options: ["10", "15", "20", "25"], correct: 1 },
+                            { q: "Moda de 8, 8, 9, 10, 10:", options: ["8 y 10", "8", "10", "9"], correct: 0 },
+                            { q: "Mediana de 5, 10, 15, 20, 25:", options: ["10", "15", "20", "30"], correct: 1 },
+                            { q: "Moda de 1, 5, 5, 5, 6:", options: ["1", "5", "6", "No hay"], correct: 1 },
+                            { q: "Mediana de 2, 2, 4:", options: ["2", "3", "4", "2.5"], correct: 0 },
+                            { q: "Moda de 3, 4, 4, 5, 5:", options: ["3", "4 y 5", "5", "4"], correct: 1 },
+                            { q: "Mediana de 1, 2, 4, 5:", options: ["2", "3", "4", "5"], correct: 1 },
+                            { q: "Moda de 7, 7, 8, 9:", options: ["8", "7", "9", "No hay"], correct: 1 },
+                            { q: "Mediana de 6, 7, 8:", options: ["6", "7", "8", "6.5"], correct: 1 },
+                            { q: "Moda de 1, 1, 1, 5, 5:", options: ["1 y 5", "1", "5", "3"], correct: 1 },
+                            { q: "Mediana de 3, 3, 3, 4, 5:", options: ["3", "4", "5", "3.5"], correct: 0 },
+                            { q: "Moda de 0, 1, 1, 2, 2, 2:", options: ["1", "2", "0", "1 y 2"], correct: 1 },
+                            { q: "Mediana de 10, 12, 14:", options: ["10", "12", "14", "13"], correct: 1 },
+                            { q: "Moda de 1, 2, 3, 4, 5:", options: ["3", "1", "5", "No hay"], correct: 3 },
+                            { q: "Mediana de 8, 10, 12, 14:", options: ["10", "11", "12", "14"], correct: 1 },
+                            { q: "Moda de 9, 9, 9, 10:", options: ["9", "10", "9 y 10", "No hay"], correct: 0 },
+                            { q: "Mediana de 1, 5, 10, 20:", options: ["5", "7.5", "10", "15"], correct: 1 },
+                        ]
+                    }
+                }
+            }
+        };
 
-function updateMedals(){
-  const container = document.getElementById('medals');
-  container.innerHTML='';
-  const milestones=[5,10,20];
-  milestones.forEach(m=>{
-    const medal=document.createElement('div'); 
-    medal.classList.add('medal'); 
-    medal.textContent='🏅';
-    if(points>=m) medal.classList.add('active');
-    container.appendChild(medal);
-  });
-}
+        // ===================================================================
+        // 2. VARIABLES GLOBALES Y JUEGOS
+        // ===================================================================
+        let currentExercises = [];
+        let currentQ = 0;
+        let points = 0;
+        let level = 1;
+        let completedExercises = [];
+        let answeredCurrentQuestion = false;
+        
+        const availableGames = [
+            { id: 1, name: "Arcanoid Táctil", func: "startGame1_Arcanoid" },
+            { id: 2, name: "Juego de Pares", func: "startGame2_Memory" }, 
+        ];
 
-function updateReviewScreen(){
-  const reviewDiv=document.getElementById('reviewQuestions');
-  reviewDiv.innerHTML='';
-  if(completedExercises.length===0){
-    reviewDiv.innerHTML='<p>No hay ejercicios completados aún.</p>';
-    return;
-  }
-  completedExercises.forEach((q,i)=>{
-    const p=document.createElement('p');
-    p.textContent=`${i+1}. ${q}`;
-    reviewDiv.appendChild(p);
-  });
-}
+        let animationFrameId = null; 
 
-// Inicialización
-hideAllScreens();
-document.getElementById('loginScreen').classList.add('active');
+        // ===================================================================
+        // 3. FUNCIONES DE NAVEGACIÓN
+        // ===================================================================
+
+        function hideAllScreens() {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        }
+
+        function goToSubjectFromLogin() {
+            const name = document.getElementById('studentNameLogin').value.trim();
+            const age = document.getElementById('studentAgeLogin').value.trim();
+            if (!name || !age) {
+                alert('Introduce tu nombre y edad');
+                return;
+            }
+            document.getElementById('evaluationChoose').innerHTML = '<option value="">--Selecciona Evaluación--</option>';
+            Object.keys(curriculum['Matemáticas']['1ºESO']).forEach(evalName => {
+                const o = document.createElement('option');
+                o.value = evalName;
+                o.text = evalName;
+                document.getElementById('evaluationChoose').add(o);
+            });
+            document.getElementById('subjectChoose').value = 'Matemáticas'; 
+            populateTopics(); 
+
+            hideAllScreens();
+            document.getElementById('subjectScreen').classList.add('active');
+        }
+
+        function goToLogin() {
+            hideAllScreens();
+            document.getElementById('loginScreen').classList.add('active');
+        }
+
+        function goToSubjectFromExercise() {
+            hideAllScreens();
+            document.getElementById('subjectScreen').classList.add('active');
+        }
+
+        function goToReview() {
+            hideAllScreens();
+            document.getElementById('reviewScreen').classList.add('active');
+            updateReviewScreen();
+        }
+
+        document.getElementById('evaluationChoose').addEventListener('change', populateTopics);
+
+        function populateTopics() {
+            const subject = document.getElementById('subjectChoose').value;
+            const evaluation = document.getElementById('evaluationChoose').value;
+            const topicSelect = document.getElementById('topicChoose');
+            topicSelect.innerHTML = '<option value="">--Selecciona Tema--</option>';
+
+            if (subject && evaluation && curriculum[subject]["1ºESO"][evaluation]) {
+                Object.keys(curriculum[subject]["1ºESO"][evaluation]).forEach(t => {
+                    const o = document.createElement('option');
+                    o.value = t;
+                    o.text = t;
+                    topicSelect.add(o);
+                });
+            }
+        }
+        
+        function endGame() {
+            // Limpiar Arcanoid
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            const canvas = document.getElementById("juegoCanvas");
+            const ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, canvas.width, canvas.height); 
+            document.getElementById('arcanoidGameContainer').style.display = 'none';
+
+            // Limpiar Memory
+            document.getElementById('memoryGameContainer').classList.remove('active');
+            document.querySelector('.game-container-memory').innerHTML = ''; // Limpiar cartas
+
+            hideAllScreens();
+            document.getElementById('exerciseScreen').classList.add('active');
+            answeredCurrentQuestion = true; 
+            nextQuestion(); // Avanzar al siguiente ejercicio
+        }
+
+        // ===================================================================
+        // 4. FUNCIONES DE JUEGO (EJERCICIOS)
+        // ===================================================================
+
+        function startExercises() {
+            const subject = document.getElementById('subjectChoose').value;
+            const evaluation = document.getElementById('evaluationChoose').value;
+            const topic = document.getElementById('topicChoose').value;
+
+            if (!subject || !evaluation || !topic) {
+                alert('Selecciona asignatura, evaluación y tema');
+                return;
+            }
+
+            const original = curriculum[subject]["1ºESO"][evaluation][topic];
+            const shuffled = [...original];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+
+            const maxQuestions = 20;
+            currentExercises = shuffled.slice(0, Math.min(original.length, maxQuestions));
+
+            currentQ = 0;
+            points = 0;
+            level = 1;
+            completedExercises = [];
+            answeredCurrentQuestion = false;
+
+            hideAllScreens();
+            document.getElementById('exerciseScreen').classList.add('active');
+            document.getElementById('subjectTopic').innerText = `${subject} - ${topic}`;
+            document.getElementById('totalQuestions').innerText = currentExercises.length;
+            updatePoints();
+            updateLevel();
+            updateMedals();
+            loadQuestion();
+        }
+
+
+        function loadQuestion() {
+            answeredCurrentQuestion = false;
+            if (currentQ >= currentExercises.length) {
+                return goToReview(); 
+            }
+
+            const q = currentExercises[currentQ];
+            document.getElementById('questionNumber').innerText = currentQ + 1;
+            document.getElementById('questionText').innerText = q.q;
+
+            const btns = document.querySelectorAll('.options button');
+            btns.forEach((btn, i) => {
+                btn.innerText = q.options[i];
+                btn.className = '';
+                btn.disabled = false; 
+            });
+        }
+
+        function handleOptionClick(event) {
+            if (event.target.tagName !== 'BUTTON') return;
+            checkAnswer(event.target);
+        }
+
+        function checkAnswer(btn) {
+            if (answeredCurrentQuestion) return; 
+
+            const q = currentExercises[currentQ];
+            const idx = parseInt(btn.getAttribute('data-option-index'));
+            answeredCurrentQuestion = true; 
+            
+            document.querySelectorAll('.options button').forEach(b => b.disabled = true);
+
+            if (idx === q.correct) {
+                btn.classList.add('correct');
+                points++; 
+                completedExercises.push(q.q);
+            } else {
+                btn.classList.add('wrong');
+                document.querySelector(`.options button[data-option-index="${q.correct}"]`).classList.add('correct');
+            }
+            
+            updatePoints(); 
+            updateMedals();
+            updateLevel(); 
+        }
+
+        function nextQuestion() {
+            if (!answeredCurrentQuestion) {
+                alert('Debes responder la pregunta actual antes de avanzar.');
+                return;
+            }
+            currentQ++;
+            loadQuestion();
+        }
+
+        // ===================================================================
+        // 5. FUNCIONES DE GAMIFICACIÓN
+        // ===================================================================
+
+        function updatePoints() {
+            document.getElementById('pointsDisplay').innerText = `Puntos: ${points}`;
+            const progress = Math.min((points % 10) * 10, 100); 
+            document.getElementById('progress').style.width = progress + '%';
+        }
+
+        function updateLevel() {
+            const newLevel = Math.floor(points / 10) + 1;
+            if (newLevel > level) {
+                level = newLevel;
+                startRewardGame();
+            }
+            document.getElementById('levelDisplay').innerText = `Nivel: ${level}`;
+        }
+
+        function updateMedals() {
+            const container = document.getElementById('medals');
+            container.innerHTML = '';
+            const milestones = [5, 10, 20]; 
+            const completedCount = completedExercises.length;
+
+            milestones.forEach(m => {
+                const medal = document.createElement('div');
+                medal.classList.add('medal');
+                
+                let icon = '🏅';
+                if (m === 5) icon = '🥉'; 
+                if (m === 10) icon = '🥈'; 
+                if (m === 20) icon = '🥇'; 
+
+                medal.textContent = icon;
+                if (completedCount >= m) medal.classList.add('active');
+                container.appendChild(medal);
+            });
+        }
+
+        function updateReviewScreen() {
+            document.getElementById('finalPoints').innerText = points;
+            document.getElementById('finalLevel').innerText = level;
+
+            const reviewDiv = document.getElementById('reviewQuestions');
+            reviewDiv.innerHTML = '';
+            if (completedExercises.length === 0) {
+                reviewDiv.innerHTML = '<p>No acertaste ninguna pregunta en esta sesión.</p>';
+                return;
+            }
+            completedExercises.forEach((q, i) => {
+                const p = document.createElement('p');
+                p.textContent = `${i + 1}. ${q}`;
+                reviewDiv.appendChild(p);
+            });
+        }
+        
+        // ===================================================================
+        // 6. FUNCIONES DE PREMIO (JUEGOS)
+        // ===================================================================
+
+        function startRewardGame() {
+            // Oculta todos los contenedores de juego al iniciar
+            document.getElementById('arcanoidGameContainer').style.display = 'none';
+            document.getElementById('memoryGameContainer').classList.remove('active');
+
+            hideAllScreens();
+            document.getElementById('gameScreen').classList.add('active');
+            document.getElementById('rewardLevel').innerText = level;
+            
+            // Lógica para seleccionar un juego aleatorio
+            const gameIndex = Math.floor(Math.random() * availableGames.length);
+            const selectedGame = availableGames[gameIndex];
+
+            if (window[selectedGame.func]) {
+                window[selectedGame.func]();
+            } else {
+                alert(`Error: El juego '${selectedGame.name}' no está implementado.`);
+                endGame();
+            }
+        }
+
+        // ===================================================================
+        // JUEGO 1: ARCANOID TÁCTIL (SIN CAMBIOS)
+        // ===================================================================
+
+        function startGame1_Arcanoid() {
+            document.getElementById('arcanoidGameContainer').style.display = 'block';
+
+            const canvas = document.getElementById("juegoCanvas");
+            const ctx = canvas.getContext("2d");
+            
+            const ancho = canvas.width;
+            const alto = canvas.height;
+
+            const paletaAltura = 10;
+            const paletaAncho = 75;
+            let paletaX = (ancho - paletaAncho) / 2;
+
+            let bolaRadio = 5;
+            let bolaX = ancho / 2;
+            let bolaY = alto - 30;
+            let velocidadX = 2; 
+            let velocidadY = -2; 
+            let bloquesRotos = 0; 
+
+            const ladrilloFila = 5;
+            const ladrilloColumna = 8;
+            const ladrilloAncho = 30;
+            const ladrilloAltura = 10;
+            const ladrilloPadding = 5;
+            const ladrilloOffsetSuperior = 30;
+            const ladrilloOffsetIzquierda = 10;
+            
+            let bloques = [];
+            for(let c=0; c<ladrilloColumna; c++) {
+                bloques[c] = [];
+                for(let r=0; r<ladrilloFila; r++) {
+                    bloques[c][r] = { x: 0, y: 0, status: 1 }; 
+                }
+            }
+
+            function dibujarBola() {
+                ctx.beginPath();
+                ctx.arc(bolaX, bolaY, bolaRadio, 0, Math.PI * 2);
+                ctx.fillStyle = "#FF0077"; 
+                ctx.fill();
+                ctx.closePath();
+            }
+
+            function dibujarPaleta() {
+                ctx.beginPath();
+                ctx.rect(paletaX, alto - paletaAltura, paletaAncho, paletaAltura);
+                ctx.fillStyle = "#00FFC0"; 
+                ctx.fill();
+                ctx.closePath();
+            }
+
+            function dibujarBloques() {
+                for(let c=0; c<ladrilloColumna; c++) {
+                    for(let r=0; r<ladrilloFila; r++) {
+                        const b = bloques[c][r];
+                        if(b.status == 1) {
+                            const ladrilloX = (c * (ladrilloAncho + ladrilloPadding)) + ladrilloOffsetIzquierda;
+                            const ladrilloY = (r * (ladrilloAltura + ladrilloPadding)) + ladrilloOffsetSuperior;
+                            
+                            b.x = ladrilloX;
+                            b.y = ladrilloY;
+                            
+                            ctx.beginPath();
+                            ctx.rect(ladrilloX, ladrilloY, ladrilloAncho, ladrilloAltura);
+                            ctx.fillStyle = "#FFC821"; 
+                            ctx.fill();
+                            ctx.closePath();
+                        }
+                    }
+                }
+            }
+            
+            function colisionBloques() {
+                for(let c=0; c<ladrilloColumna; c++) {
+                    for(let r=0; r<ladrilloFila; r++) {
+                        const b = bloques[c][r];
+                        if(b.status == 1) {
+                            if(bolaX > b.x && bolaX < b.x + ladrilloAncho && bolaY > b.y && bolaY < b.y + ladrilloAltura) {
+                                velocidadY = -velocidadY; 
+                                b.status = 0; 
+                                bloquesRotos++;
+                                
+                                if (bloquesRotos === ladrilloFila * ladrilloColumna) {
+                                    alert("¡GANASTE EL ARCANOID! ¡A seguir estudiando!");
+                                    return endGame();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            function moverPaleta(clientX) {
+                const canvasRect = canvas.getBoundingClientRect();
+                let relativeX = clientX - canvasRect.left;
+
+                paletaX = relativeX - paletaAncho / 2;
+
+                if (paletaX < 0) {
+                    paletaX = 0;
+                } else if (paletaX + paletaAncho > ancho) {
+                    paletaX = ancho - paletaAncho;
+                }
+            }
+
+            canvas.onmousemove = (e) => moverPaleta(e.clientX);
+            canvas.ontouchmove = (e) => {
+                e.preventDefault(); 
+                if(e.touches.length > 0) {
+                    moverPaleta(e.touches[0].clientX);
+                }
+            };
+            
+            function dibujar() {
+                ctx.clearRect(0, 0, ancho, alto);
+
+                dibujarBloques();
+                dibujarBola();
+                dibujarPaleta();
+                colisionBloques();
+
+                bolaX += velocidadX;
+                bolaY += velocidadY;
+
+                if(bolaX + velocidadX > ancho - bolaRadio || bolaX + velocidadX < bolaRadio) {
+                    velocidadX = -velocidadX; 
+                }
+                if(bolaY + velocidadY < bolaRadio) {
+                    velocidadY = -velocidadY; 
+                }
+
+                if(bolaY + velocidadY > alto - bolaRadio - paletaAltura) {
+                    if(bolaX > paletaX && bolaX < paletaX + paletaAncho) {
+                        velocidadY = -velocidadY;
+                    } else if (bolaY + velocidadY > alto - bolaRadio) {
+                        alert("¡FIN DEL JUEGO! Vuelve a los ejercicios para subir otro nivel.");
+                        return endGame(); 
+                    }
+                }
+
+                animationFrameId = requestAnimationFrame(dibujar);
+            }
+
+            dibujar();
+        }
+
+        // ===================================================================
+        // JUEGO 2: JUEGO DE PARES (Memory) - INTEGRADO AQUÍ
+        // ===================================================================
+        function startGame2_Memory() {
+            document.getElementById('memoryGameContainer').classList.add('active');
+            const gameContainer = document.querySelector('.game-container-memory');
+            gameContainer.innerHTML = ''; // Limpiar cualquier juego anterior
+            document.getElementById('mensaje-victoria-memory').style.display = 'none';
+
+            const cardsArray = [
+                { name: 'icono1', img: '🐱' },
+                { name: 'icono2', img: '🦄' },
+                { name: 'icono3', img: '🌈' },
+                { name: 'icono4', img: '⭐' },
+                { name: 'icono5', img: '🍎' }
+            ];
+
+            const gameCards = [...cardsArray, ...cardsArray];
+
+            // Función para barajar los iconos (Fisher-Yates)
+            function shuffle(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+            }
+            
+            shuffle(gameCards);
+
+            let hasFlippedCard = false;
+            let lockBoard = false;
+            let firstCard, secondCard;
+            let matches = 0;
+            const totalMatches = cardsArray.length; // 5 pares
+
+            function resetBoard() {
+                [hasFlippedCard, lockBoard] = [false, false];
+                [firstCard, secondCard] = [null, null];
+            }
+
+            function flipCard() {
+                if (lockBoard) return;
+                if (this === firstCard) return;
+
+                this.classList.add('flip');
+
+                if (!hasFlippedCard) {
+                    hasFlippedCard = true;
+                    firstCard = this;
+                    return;
+                }
+
+                secondCard = this;
+                checkForMatch();
+            }
+
+            function checkForMatch() {
+                let isMatch = firstCard.dataset.card === secondCard.dataset.card;
+
+                isMatch ? disableCards() : unflipCards();
+            }
+
+            function disableCards() {
+                firstCard.removeEventListener('click', flipCard);
+                secondCard.removeEventListener('click', flipCard);
+                
+                firstCard.classList.add('match');
+                secondCard.classList.add('match');
+
+                matches++;
+                
+                if (matches === totalMatches) {
+                    document.getElementById('mensaje-victoria-memory').style.display = 'block';
+                    // Reasignar el botón de "Jugar de nuevo" para que llame a la función de inicio de este juego
+                    document.getElementById('restartMemory').onclick = startGame2_Memory;
+                }
+
+                resetBoard();
+            }
+
+            function unflipCards() {
+                lockBoard = true; 
+                setTimeout(() => {
+                    firstCard.classList.remove('flip');
+                    secondCard.classList.remove('flip');
+                    resetBoard();
+                }, 1000); 
+            }
+
+            // 1. CREAR LAS CARTAS EN EL HTML
+            gameCards.forEach(card => {
+                const cardElement = document.createElement('div');
+                cardElement.classList.add('memory-card');
+                cardElement.dataset.card = card.name;
+
+                // Cara frontal (el icono/emoji)
+                const frontFace = document.createElement('div');
+                frontFace.classList.add('front-face');
+                frontFace.textContent = card.img;
+
+                // Cara trasera (el reverso)
+                const backFace = document.createElement('div');
+                backFace.classList.add('back-face');
+                backFace.textContent = '✨'; // Pequeño icono en el reverso
+
+                cardElement.appendChild(frontFace);
+                cardElement.appendChild(backFace);
+                
+                cardElement.addEventListener('click', flipCard);
+                gameContainer.appendChild(cardElement);
+            });
+        }
+
+
+        // ===================================================================
+        // 7. INICIALIZACIÓN
+        // ===================================================================
+        window.onload = function() {
+            hideAllScreens();
+            document.getElementById('loginScreen').classList.add('active');
+        };
 </script>
 
 </body>
