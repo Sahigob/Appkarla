@@ -681,7 +681,7 @@
                 [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
             }
 
-            const maxQuestions = 20;
+            const maxQuestions = 100;
             currentExercises = shuffled.slice(0, Math.min(original.length, maxQuestions));
 
             currentQ = 0;
@@ -767,18 +767,24 @@
         }
 
         function updateLevel() {
-            const newLevel = Math.floor(points / 10) + 1;
-            if (newLevel > level) {
-                level = newLevel;
-                startRewardGame();
-            }
-            document.getElementById('levelDisplay').innerText = `Nivel: ${level}`;
+    const newLevel = Math.floor(points / 10) + 1;
+    if (newLevel > level) {
+        level = newLevel;
+        startRewardGame();
+
+        // 🎉 Mensaje especial al alcanzar el nivel 10
+        if (level === 10) {
+            alert("¡Has alcanzado el nivel 10! ¡Eres una campeona del estudio!");
         }
+    }
+    document.getElementById('levelDisplay').innerText = `Nivel: ${level}`;
+}
+
 
         function updateMedals() {
             const container = document.getElementById('medals');
             container.innerHTML = '';
-            const milestones = [5, 10, 20]; 
+            const milestones = [5, 10, 20, 30, 40, 50];
             const completedCount = completedExercises.length;
 
             milestones.forEach(m => {
@@ -789,6 +795,9 @@
                 if (m === 5) icon = '🥉'; 
                 if (m === 10) icon = '🥈'; 
                 if (m === 20) icon = '🥇'; 
+                if (m === 30) icon = '🏆';
+                if (m === 40) icon = '🎖️';
+                if (m === 50) icon = '👑';
 
                 medal.textContent = icon;
                 if (completedCount >= m) medal.classList.add('active');
