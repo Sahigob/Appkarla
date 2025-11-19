@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Carla Maths App - 1º ESO</title>
+    <title>Alex Maths App - 1ºESO</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
@@ -100,127 +100,7 @@
             opacity: 1;
         }
 
-        /* =================================================================== */
-        /* Estilos de la pantalla de Juego (Arcanoid) */
-        /* =================================================================== */
-        #gameScreen {
-            background-color: #202020;
-            min-height: auto;
-            /* Flexbox para centrar el canvas y el juego de memoria */
-            display: none; 
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-        }
-        #gameScreen.active {
-            display: flex; 
-        }
-
-        /* Estilos ARCANOID */
-        #juegoCanvas {
-            border: 4px solid #fff;
-            background: #000;
-            display: block;
-            margin: 20px auto;
-            touch-action: none; 
-        }
-        #gameControls {
-            margin-top: 15px;
-        }
-
-        /* =================================================================== */
-        /* Estilos JUEGO DE PARES (Memory) */
-        /* =================================================================== */
-        #memoryGameContainer {
-            width: 100%; /* Ocupa el ancho de la pantalla */
-            max-width: 320px;
-            display: none; /* Oculto por defecto */
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-            background-color: #fce4ec; /* Fondo rosa claro */
-            border-radius: 10px;
-        }
-
-        #memoryGameContainer.active {
-            display: flex;
-        }
-
-        #memoryGameContainer header h1 {
-            color: #d81b60; /* Rosa fuerte */
-            font-size: 1.8em;
-            text-align: center;
-        }
-
-        #memoryGameContainer p {
-            color: #4a148c;
-            font-weight: 600;
-        }
-
-        .game-container-memory {
-            width: 300px; /* Tamaño adaptado para móvil/tablet */
-            height: 350px; 
-            display: grid;
-            grid-template-columns: repeat(3, 1fr); /* 3 columnas */
-            grid-gap: 8px;
-            perspective: 1000px;
-            margin-top: 15px;
-        }
-
-        .memory-card {
-            width: 100%;
-            height: 100%;
-            position: relative;
-            transform-style: preserve-3d;
-            transition: transform .5s;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            border-radius: 8px;
-            cursor: pointer;
-        }
-
-        /* Clase para cuando la carta está volteada o emparejada */
-        .memory-card.flip, .memory-card.match {
-            transform: rotateY(180deg);
-        }
-
-        .front-face, .back-face {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            backface-visibility: hidden;
-            border-radius: 8px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 35px;
-        }
-
-        .front-face {
-            transform: rotateY(180deg);
-            background-color: #ffffff;
-        }
-
-        .back-face {
-            background-color: #4db6ac; /* Verde azulado para el reverso */
-            color: white;
-            font-weight: bold;
-            font-size: 24px;
-            border: 3px solid #00897b;
-        }
-
-        #mensaje-victoria-memory {
-            margin-top: 30px;
-            padding: 20px;
-            background-color: #a5d6a7; /* Verde suave */
-            border-radius: 15px;
-            text-align: center;
-            box-shadow: 0 0 15px rgba(0, 150, 0, 0.5);
-            width: 80%;
-        }
-        
-        #mensaje-victoria-memory h2 {
-            color: #388e3c;
-        }
+      
 .reward-banner {
   background-color: rgba(255, 255, 255, 0.95);
   color: #333;
@@ -312,15 +192,55 @@
         font-size: 1em;
     }
 }
+/* =================================================================== */
+/* Estilos de la pantalla de Juego (MODIFICADO) */
+/* =================================================================== */
+#gameScreen {
+    /* Eliminamos el fondo negro (usamos el fondo blanco/claro de .screen) */
+    background-color: #fff; 
+    min-height: 100vh; /* Asegura que cubra toda la vista */
+    display: none; 
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0; /* Eliminamos el padding para que el juego se ajuste al borde */
+    max-width: none; /* Permitimos que ocupe todo el ancho */
+    box-shadow: none; /* Eliminamos la sombra */
+}
+#gameScreen.active {
+    display: flex; 
+}
 
+/* CONTENEDORES DE JUEGO (NUEVO) */
+/* Aseguramos que el contenedor del juego ocupe todo el espacio disponible */
+.game-container { 
+    width: 100%;
+    /* Alto de la pantalla menos el banner y el botón de volver */
+    height: calc(100vh - 100px); 
+    margin-top: 10px;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+}
+.game-container.active {
+    display: flex;
+}
+
+/* Iframe para incrustar el juego (NUEVO) */
+.game-container iframe {
+    width: 100%;
+    /* 100% del alto disponible dentro de .game-container */
+    height: 100%; 
+    border: none; 
+}
     </style>
 </head>
 <body>
 
     <div id="loginScreen" class="screen active">
-        <h2>Bienvenida, Carla 👋</h2>
-        <p>¡Vamos a repasar matemáticas de 1º ESO jugando!</p>
-        <input type="text" id="studentNameLogin" placeholder="Tu Nombre (Carla)" style="padding: 10px; margin: 10px; width: 80%;">
+        <h2>Bienvenido, Alex 👋</h2>
+        <p>¡Vamos a repasar 1ºESO jugando!</p>
+        <input type="text" id="studentNameLogin" placeholder="Tu Nombre" style="padding: 10px; margin: 10px; width: 80%;">
         <input type="number" id="studentAgeLogin" placeholder="Tu Edad" style="padding: 10px; margin: 10px; width: 80%;">
         <button onclick="goToSubjectFromLogin()" style="padding: 15px; background-color: #007bff; color: white; border: none; border-radius: 5px; width: 80%; cursor: pointer;">Entrar</button>
     </div>
@@ -331,7 +251,8 @@
     <option value="" disabled selected>-- Elige Asignatura --</option>
     <option value="Matemáticas">Matemáticas</option>
     <option value="Lengua">Lengua</option>
-    <option value="Sociales">Sociales</option> 
+    <option value="Sociales">Sociales</option>
+    
 </select>
 
 <select id="evaluationChoose" class="subject-select">
@@ -372,50 +293,62 @@
 
     <div id="gameScreen" class="screen">
         <div id="rewardMessage" class="reward-banner">
-  <h2>¡FELICIDADES, Carla! ¡PREMIO! 🎉</h2>
-  <p>Has subido al Nivel <span id="rewardLevel"></span>. Tómate un descanso y ¡a jugar!</p>
-</div>
-        
-        <div id="arcanoidGameContainer">
-            <canvas id="juegoCanvas" width="320" height="480"></canvas>
-        </div>
-
-        <div id="memoryGameContainer" style="font-family: 'Comic Sans MS', cursive, sans-serif;">
-            <header>
-                <h1>Juego de Pares de Emojis</h1>
-                <p>Toca dos cartas para encontrar las parejas. ¡Hay 5 pares!</p>
-            </header>
-            <main class="game-container-memory">
-            </main>
-            <div id="mensaje-victoria-memory" style="display: none;">
-                <h2>¡GANASTE! 🏆 Eres increíblemente inteligente.</h2>
-                <button id="restartMemory" style="padding: 10px 20px; font-size: 1.2em; cursor: pointer; margin-top: 10px; background-color: #e91e63; color: white; border: none; border-radius: 5px;">Jugar de nuevo</button>
-            </div>
-        </div>
-        <!-- Juego 3: Matamarcianos -->
-<div id="matamarcianosGameContainer" style="display: none;">
-  <canvas id="juegoCanvasMatamarcianos" width="320" height="480"></canvas>
-  <div style="margin-top: 10px;">
-    <button onclick="endGame()" style="padding: 10px; background-color: #dc3545; color: white; border: none; border-radius: 5px;">Volver a los Ejercicios</button>
-  </div>
+    <h2>¡FELICIDADES, Alex! ¡PREMIO! 🎉</h2>
+    <p>Has subido al Nivel <span id="rewardLevel"></span>. Tómate un descanso y ¡a jugar!</p>
 </div>
 
-        <div id="gameControls">
-            <button id="endGameButton" onclick="endGame()" style="padding: 10px; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">Volver a los Ejercicios</button>
-        </div>
-        
-    </div>
+<div id="arkanoidGameContainer" class="game-container">
+    <h2>ArKanoid Táctil</h2>
+    <iframe id="iframe_arkanoid" src="" frameborder="0" scrolling="no" allowfullscreen></iframe>
+</div> 
 
-    <div id="reviewScreen" class="screen">
-        <h2>Revisión de la Sesión</h2>
-        <p>Puntuación Final: <strong id="finalPoints">0</strong> puntos.</p>
-        <p>Nivel Alcanzado: <strong id="finalLevel">1</strong></p>
-        <h3>Preguntas Acertadas:</h3>
-        <div id="reviewQuestions" style="text-align: left; padding: 0 20px;">
-            </div>
-        <button onclick="goToSubjectFromExercise()" style="padding: 15px; margin-top: 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; width: 80%; cursor: pointer;">Elegir Otro Tema</button>
-    </div>
+<div id="memoriaGameContainer" class="game-container">
+    <h2>Juego de Pares</h2>
+    <iframe id="iframe_memoria" src="" frameborder="0" scrolling="no" allowfullscreen></iframe>
+</div>
 
+<div id="matamarcianosGameContainer" class="game-container">
+    <h2>Matamarcianos</h2>
+    <iframe id="iframe_matamarcianos" src="" frameborder="0" scrolling="no" allowfullscreen></iframe>
+</div>
+
+<div id="asteroidesGameContainer" class="game-container"> 
+    <h2>Juego de Asteroides</h2>
+    <iframe id="iframe_asteroides" src="" frameborder="0" scrolling="no" allowfullscreen></iframe>
+</div>
+
+<div id="donkeykongGameContainer" class="game-container">
+    <h2>Donkeykong</h2>
+    <iframe id="iframe_donkeykong" src="" frameborder="0" scrolling="no" allowfullscreen></iframe>
+</div>
+
+<div id="froggerGameContainer" class="game-container">
+    <h2>Juego de la Rana</h2>
+    <iframe id="iframe_frogger" src="" frameborder="0" scrolling="no" allowfullscreen></iframe>
+</div>
+
+<div id="pongGameContainer" class="game-container"> 
+    <h2>Tenis</h2>
+    <iframe id="iframe_pong" src="" frameborder="0" scrolling="no" allowfullscreen></iframe>
+</div>
+
+<div id="tictactoeGameContainer" class="game-container">
+    <h2>Tres en Raya</h2>
+    <iframe id="iframe_tictactoe" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> 
+</div>
+
+<div id="tetrisGameContainer" class="game-container"> 
+    <h2>Tetris Lite</h2>
+    <iframe id="iframe_tetris" src="" frameborder="0" scrolling="no" allowfullscreen></iframe>
+</div>
+
+<div id="pacmanGameContainer" class="game-container"> 
+    <h2>Pacman</h2>
+    <iframe id="iframe_pacman" src="" frameborder="0" scrolling="no" allowfullscreen></iframe>
+</div>
+<div style="margin-top: 20px;">
+    <button onclick="endGame()" style="padding: 10px; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">Volver a los Ejercicios</button>
+</div>
     <script>
         // ===================================================================
         // 1. ESTRUCTURA CURRICULAR (TU CÓDIGO)
@@ -1275,6 +1208,8 @@
   { q: "¿Qué estilo artístico tiene arcos redondos y simetría?", options: ["Renacentista", "Gótico", "Románico", "Barroco"], correct: 0 },
   { q: "¿Qué clase social surgió con la economía del comercio?", options: ["Burgueses", "Nobles", "Monjes", "Campesinos"], correct: 0 },
   { q: "¿Quién realizó la primera vuelta al mundo por mar?", options: ["Cristóbal Colón", "Magallanes", "Vasco da Gama", "Hernán Cortés"], correct: 1 }
+
+  
 ],
 
             }
@@ -1292,10 +1227,56 @@
         let completedExercises = [];
         let answeredCurrentQuestion = false;
         
-        const availableGames = [
-            { id: 1, name: "Arcanoid Táctil", func: "startGame1_Arcanoid" },
-            { id: 2, name: "Juego de Pares", func: "startGame2_Memory" }, 
-        ];
+
+        function showGameContainer(gameId) {
+    // 1. Ocultar todos los contenedores de juego
+    availableGames.forEach(game => {
+        const container = document.getElementById(game.container);
+        if (container) {
+            container.style.display = 'none';
+        }
+    });
+
+    // 2. Mostrar el contenedor seleccionado y recargar el iframe
+    const selectedGame = availableGames.find(g => g.id === gameId);
+    if (selectedGame) {
+        document.getElementById(selectedGame.container).style.display = 'block';
+        
+        const iframe = document.getElementById(selectedGame.iframe);
+        if (iframe) {
+            // Esto recarga el iframe, asegurando que el juego se reinicia.
+            iframe.src = `juegos/${selectedGame.file}`; 
+        }
+    }
+}
+        
+// PEGA ESTE BLOQUE COMPLETO INMEDIATAMENTE DESPUÉS DE showGameContainer()
+
+// Estas funciones sirven como 'puentes' para el sistema de selección al azar.
+function startGame1_Arkanoid() { showGameContainer(1); }
+function startGame2_Memoria() { showGameContainer(2); }
+function startGame3_Matamarcianos() { showGameContainer(3); }
+function startGame4_Donkeykong() { showGameContainer(4); }
+function startGame5_Frogger() { showGameContainer(5); }
+function startGame6_Pong() { showGameContainer(6); }
+function startGame7_Tictactoe() { showGameContainer(7); }
+function startGame8_Asteroides() { showGameContainer(8); }
+function startGame9_Tetris() { showGameContainer(9); } 
+function startGame10_Pacman() { showGameContainer(10); }
+          
+const availableGames = [
+    { id: 1, name: "Arkanoid Táctil", func: "startGame1_Arkanoid", file: "arkanoid.html", container: "arkanoidGameContainer", iframe: "iframe_arkanoid" },
+    { id: 2, name: "Juego de Pares", func: "startGame2_Memoria", file: "memoria.html", container: "memoriaGameContainer", iframe: "iframe_memoria" },
+    { id: 3, name: "Matamarcianos", func: "startGame3_Matamarcianos", file: "matamarcianos.html", container: "matamarcianosGameContainer", iframe: "iframe_matamarcianos" },
+    { id: 4, name: "Donkeykong", func: "startGame4_Donkeykong", file: "donkeykong.html", container: "donkeykongGameContainer", iframe: "iframe_donkeykong" },
+    { id: 5, name: "Juego de la Rana", func: "startGame5_Frogger", file: "frogger.html", container: "froggerGameContainer", iframe: "iframe_frogger" },
+    { id: 6, name: "Tenis", func: "startGame6_Pong", file: "pong.html", container: "pongGameContainer", iframe: "iframe_pong" },
+    { id: 7, name: "Tres en Raya", func: "startGame7_Tictactoe", file: "tictactoe.html", container: "tictactoeGameContainer", iframe: "iframe_tictactoe" },
+    { id: 8, name: "Asteroides", func: "startGame8_Asteroides", file: "asteroides.html", container: "asteroidesGameContainer", iframe: "iframe_asteroides" },
+    { id: 9, name: "Tetris Lite", func: "startGame9_Tetris", file: "tetris.html", container: "tetrisGameContainer", iframe: "iframe_tetris" },
+    { id: 10, name: "Pacman", func: "startGame10_Pacman", file: "pacman.html", container: "pacmanGameContainer", iframe: "iframe_pacman" }
+    
+];
 
         let animationFrameId = null; 
 
@@ -1316,6 +1297,30 @@
         return;
     }
 
+    // 1. Obtener la asignatura elegida (que será vacía, pero la preparamos)
+    const subjectChosen = document.getElementById('subjectChoose').value; 
+    
+    // 2. Limpiar y rellenar las evaluaciones (aunque solo haya una opción, lo hacemos seguro)
+    const evaluationSelect = document.getElementById('evaluationChoose');
+    evaluationSelect.innerHTML = '<option value="">--Selecciona Evaluación--</option>';
+
+    // Si hay una asignatura seleccionada desde el inicio (poco probable), la procesamos
+    const currentCurriculum = curriculum[subjectChosen] ? curriculum[subjectChosen]['1ºESO'] : {};
+    Object.keys(currentCurriculum).forEach(evalName => {
+        const o = document.createElement('option');
+        o.value = evalName;
+        o.text = evalName;
+        evaluationSelect.add(o);
+    });
+
+    // 3. Limpiar los temas
+    document.getElementById('topicChoose').innerHTML = '<option value="">--Selecciona Tema--</option>';
+    
+    // 4. Navegar a la pantalla de selección
+    hideAllScreens();
+    document.getElementById('subjectScreen').classList.add('active');
+}
+
     // 1. Obtener la asignatura que el usuario ha seleccionado en el desplegable.
     const subjectChosen = document.getElementById('subjectChoose').value; 
     
@@ -1333,14 +1338,13 @@
         document.getElementById('evaluationChoose').add(o);
     });
     
-    // **ESTO REEMPLAZA/ELIMINA la línea problemática anterior.**
-    // No necesitamos asignar el valor de 'Matemáticas' porque ya estamos usando el valor del input.
+   
 
     populateTopics(); // Llamar a esta función para rellenar los temas con la nueva asignatura/evaluación.
 
     hideAllScreens();
     document.getElementById('subjectScreen').classList.add('active');
-}
+
 
         function goToLogin() {
             hideAllScreens();
@@ -1399,30 +1403,30 @@
     // Llamamos a populateTopics para asegurar que el selector de temas se limpia o actualiza.
     populateTopics(); 
 }
-       function endGame() {
-    // Limpiar Arcanoid
+     function endGame() {
+    // 1. Detener cualquier animación de juego (si estaba en curso)
     if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
         animationFrameId = null;
     }
-    const canvas = document.getElementById("juegoCanvas");
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height); 
-    document.getElementById('arcanoidGameContainer').style.display = 'none';
+    
+    // 2. Ocultar todos los contenedores de juego
+    document.querySelectorAll('.game-container').forEach(container => {
+        container.classList.remove('active');
+    });
 
-    // Limpiar Memory
-    document.getElementById('memoryGameContainer').classList.remove('active');
-    document.querySelector('.game-container-memory').innerHTML = ''; // Limpiar cartas
+    // 3. Ocultar la pancarta de felicitación
+    const rewardMessage = document.getElementById('rewardMessage');
+    if (rewardMessage) {
+        rewardMessage.style.display = 'none'; 
+    }
 
-    // 🔴 Ocultar Matamarcianos
-    document.getElementById('matamarcianosGameContainer').style.display = 'none';
-
+    // 4. Volver a la pantalla de ejercicios y avanzar a la siguiente pregunta
     hideAllScreens();
     document.getElementById('exerciseScreen').classList.add('active');
     answeredCurrentQuestion = true; 
-    nextQuestion(); // Avanzar al siguiente ejercicio
+    nextQuestion(); 
 }
-
 
         // ===================================================================
         // 4. FUNCIONES DE JUEGO (EJERCICIOS)
@@ -1530,15 +1534,31 @@
             document.getElementById('progress').style.width = progress + '%';
         }
 
-        function updateLevel() {
-    const newLevel = Math.floor(points / 10) + 1;
+       function updateLevel() {
+    // 1. Añadimos un chequeo de seguridad: Si no hay ejercicios cargados, salimos.
+    if (currentExercises.length === 0 && points === 0) {
+        // Aseguramos que el nivel inicial se muestre
+        document.getElementById('levelDisplay').innerText = `Nivel: ${level}`;
+        return; 
+    }
+
+    const newLevel = Math.floor(points / 10) + 1; 
     if (newLevel > level) {
         level = newLevel;
-        startRewardGame();
+        
+        // El resto de la lógica de la recompensa
+        const rewardMessage = document.getElementById('rewardMessage');
+        if (rewardMessage) {
+            rewardMessage.style.display = 'block'; 
+            document.getElementById('rewardLevel').innerText = level;
+        }
+        // Retraso para ver el mensaje, lo mantenemos por ahora
+        setTimeout(startRewardGame, 100); 
+        
 
-        // 🎉 Mensaje especial al alcanzar el nivel 10
+        // Mensaje especial
         if (level === 10) {
-            alert("¡Has alcanzado el nivel 10! ¡Eres una campeona del estudio!");
+            alert("¡Has alcanzado el nivel 10! ¡Eres un campeón del estudio!");
         }
     }
     document.getElementById('levelDisplay').innerText = `Nivel: ${level}`;
@@ -1590,381 +1610,37 @@
         // 6. FUNCIONES DE PREMIO (JUEGOS)
         // ===================================================================
 
-        function startRewardGame() {
-            // Oculta todos los contenedores de juego al iniciar
-            document.getElementById('arcanoidGameContainer').style.display = 'none';
-            document.getElementById('memoryGameContainer').classList.remove('active');
+       function startRewardGame() {
+    hideAllScreens();
+    document.getElementById('gameScreen').classList.add('active');
+    document.getElementById('rewardLevel').innerText = level;
 
-            hideAllScreens();
-            document.getElementById('gameScreen').classList.add('active');
-            document.getElementById('rewardLevel').innerText = level;
-            
-            // Lógica para seleccionar un juego aleatorio
-            const gameIndex = Math.floor(Math.random() * availableGames.length);
-            const selectedGame = availableGames[gameIndex];
-
-            if (window[selectedGame.func]) {
-                window[selectedGame.func]();
-            } else {
-                alert(`Error: El juego '${selectedGame.name}' no está implementado.`);
-                endGame();
-            }
-        }
-
-        // ===================================================================
-        // JUEGO 1: ARCANOID TÁCTIL (SIN CAMBIOS)
-        // ===================================================================
-
-        function startGame1_Arcanoid() {
-            document.getElementById('arcanoidGameContainer').style.display = 'block';
-
-            const canvas = document.getElementById("juegoCanvas");
-            const ctx = canvas.getContext("2d");
-            
-            const ancho = canvas.width;
-            const alto = canvas.height;
-
-            const paletaAltura = 10;
-            const paletaAncho = 75;
-            let paletaX = (ancho - paletaAncho) / 2;
-
-            let bolaRadio = 5;
-            let bolaX = ancho / 2;
-            let bolaY = alto - 30;
-            let velocidadX = 2; 
-            let velocidadY = -2; 
-            let bloquesRotos = 0; 
-
-            const ladrilloFila = 5;
-            const ladrilloColumna = 8;
-            const ladrilloAncho = 30;
-            const ladrilloAltura = 10;
-            const ladrilloPadding = 5;
-            const ladrilloOffsetSuperior = 30;
-            const ladrilloOffsetIzquierda = 10;
-            
-            let bloques = [];
-            for(let c=0; c<ladrilloColumna; c++) {
-                bloques[c] = [];
-                for(let r=0; r<ladrilloFila; r++) {
-                    bloques[c][r] = { x: 0, y: 0, status: 1 }; 
-                }
-            }
-
-            function dibujarBola() {
-                ctx.beginPath();
-                ctx.arc(bolaX, bolaY, bolaRadio, 0, Math.PI * 2);
-                ctx.fillStyle = "#FF0077"; 
-                ctx.fill();
-                ctx.closePath();
-            }
-
-            function dibujarPaleta() {
-                ctx.beginPath();
-                ctx.rect(paletaX, alto - paletaAltura, paletaAncho, paletaAltura);
-                ctx.fillStyle = "#00FFC0"; 
-                ctx.fill();
-                ctx.closePath();
-            }
-
-            function dibujarBloques() {
-                for(let c=0; c<ladrilloColumna; c++) {
-                    for(let r=0; r<ladrilloFila; r++) {
-                        const b = bloques[c][r];
-                        if(b.status == 1) {
-                            const ladrilloX = (c * (ladrilloAncho + ladrilloPadding)) + ladrilloOffsetIzquierda;
-                            const ladrilloY = (r * (ladrilloAltura + ladrilloPadding)) + ladrilloOffsetSuperior;
-                            
-                            b.x = ladrilloX;
-                            b.y = ladrilloY;
-                            
-                            ctx.beginPath();
-                            ctx.rect(ladrilloX, ladrilloY, ladrilloAncho, ladrilloAltura);
-                            ctx.fillStyle = "#FFC821"; 
-                            ctx.fill();
-                            ctx.closePath();
-                        }
-                    }
-                }
-            }
-            
-            function colisionBloques() {
-                for(let c=0; c<ladrilloColumna; c++) {
-                    for(let r=0; r<ladrilloFila; r++) {
-                        const b = bloques[c][r];
-                        if(b.status == 1) {
-                            if(bolaX > b.x && bolaX < b.x + ladrilloAncho && bolaY > b.y && bolaY < b.y + ladrilloAltura) {
-                                velocidadY = -velocidadY; 
-                                b.status = 0; 
-                                bloquesRotos++;
-                                
-                                if (bloquesRotos === ladrilloFila * ladrilloColumna) {
-                                    alert("¡GANASTE EL ARCANOID! ¡A seguir estudiando!");
-                                    return endGame();
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            function moverPaleta(clientX) {
-                const canvasRect = canvas.getBoundingClientRect();
-                let relativeX = clientX - canvasRect.left;
-
-                paletaX = relativeX - paletaAncho / 2;
-
-                if (paletaX < 0) {
-                    paletaX = 0;
-                } else if (paletaX + paletaAncho > ancho) {
-                    paletaX = ancho - paletaAncho;
-                }
-            }
-
-            canvas.onmousemove = (e) => moverPaleta(e.clientX);
-            canvas.ontouchmove = (e) => {
-                e.preventDefault(); 
-                if(e.touches.length > 0) {
-                    moverPaleta(e.touches[0].clientX);
-                }
-            };
-            
-            function dibujar() {
-                ctx.clearRect(0, 0, ancho, alto);
-
-                dibujarBloques();
-                dibujarBola();
-                dibujarPaleta();
-                colisionBloques();
-
-                bolaX += velocidadX;
-                bolaY += velocidadY;
-
-                if(bolaX + velocidadX > ancho - bolaRadio || bolaX + velocidadX < bolaRadio) {
-                    velocidadX = -velocidadX; 
-                }
-                if(bolaY + velocidadY < bolaRadio) {
-                    velocidadY = -velocidadY; 
-                }
-
-                if(bolaY + velocidadY > alto - bolaRadio - paletaAltura) {
-                    if(bolaX > paletaX && bolaX < paletaX + paletaAncho) {
-                        velocidadY = -velocidadY;
-                    } else if (bolaY + velocidadY > alto - bolaRadio) {
-                        alert("¡FIN DEL JUEGO! Vuelve a los ejercicios para subir otro nivel.");
-                        return endGame(); 
-                    }
-                }
-
-                animationFrameId = requestAnimationFrame(dibujar);
-            }
-
-            dibujar();
-        }
-
-        // ===================================================================
-        // JUEGO 2: JUEGO DE PARES (Memory) - INTEGRADO AQUÍ
-        // ===================================================================
-        function startGame2_Memory() {
-            document.getElementById('memoryGameContainer').classList.add('active');
-            const gameContainer = document.querySelector('.game-container-memory');
-            gameContainer.innerHTML = ''; // Limpiar cualquier juego anterior
-            document.getElementById('mensaje-victoria-memory').style.display = 'none';
-
-            const cardsArray = [
-                { name: 'icono1', img: '🐱' },
-                { name: 'icono2', img: '🦄' },
-                { name: 'icono3', img: '🌈' },
-                { name: 'icono4', img: '⭐' },
-                { name: 'icono5', img: '🍎' }
-            ];
-
-            const gameCards = [...cardsArray, ...cardsArray];
-
-            // Función para barajar los iconos (Fisher-Yates)
-            function shuffle(array) {
-                for (let i = array.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [array[i], array[j]] = [array[j], array[i]];
-                }
-            }
-            
-            shuffle(gameCards);
-
-            let hasFlippedCard = false;
-            let lockBoard = false;
-            let firstCard, secondCard;
-            let matches = 0;
-            const totalMatches = cardsArray.length; // 5 pares
-
-            function resetBoard() {
-                [hasFlippedCard, lockBoard] = [false, false];
-                [firstCard, secondCard] = [null, null];
-            }
-
-            function flipCard() {
-                if (lockBoard) return;
-                if (this === firstCard) return;
-
-                this.classList.add('flip');
-
-                if (!hasFlippedCard) {
-                    hasFlippedCard = true;
-                    firstCard = this;
-                    return;
-                }
-
-                secondCard = this;
-                checkForMatch();
-            }
-
-            function checkForMatch() {
-                let isMatch = firstCard.dataset.card === secondCard.dataset.card;
-
-                isMatch ? disableCards() : unflipCards();
-            }
-
-            function disableCards() {
-                firstCard.removeEventListener('click', flipCard);
-                secondCard.removeEventListener('click', flipCard);
-                
-                firstCard.classList.add('match');
-                secondCard.classList.add('match');
-
-                matches++;
-                
-                if (matches === totalMatches) {
-                    document.getElementById('mensaje-victoria-memory').style.display = 'block';
-                    // Reasignar el botón de "Jugar de nuevo" para que llame a la función de inicio de este juego
-                    document.getElementById('restartMemory').onclick = startGame2_Memory;
-                }
-
-                resetBoard();
-            }
-
-            function unflipCards() {
-                lockBoard = true; 
-                setTimeout(() => {
-                    firstCard.classList.remove('flip');
-                    secondCard.classList.remove('flip');
-                    resetBoard();
-                }, 1000); 
-            }
-
-            // 1. CREAR LAS CARTAS EN EL HTML
-            gameCards.forEach(card => {
-                const cardElement = document.createElement('div');
-                cardElement.classList.add('memory-card');
-                cardElement.dataset.card = card.name;
-
-                // Cara frontal (el icono/emoji)
-                const frontFace = document.createElement('div');
-                frontFace.classList.add('front-face');
-                frontFace.textContent = card.img;
-
-                // Cara trasera (el reverso)
-                const backFace = document.createElement('div');
-                backFace.classList.add('back-face');
-                backFace.textContent = '✨'; // Pequeño icono en el reverso
-
-                cardElement.appendChild(frontFace);
-                cardElement.appendChild(backFace);
-                
-                cardElement.addEventListener('click', flipCard);
-                gameContainer.appendChild(cardElement);
-            });
-        }
-
-
-        // ===================================================================
-        // 7. INICIALIZACIÓN
-        // ===================================================================
-        // Añadir Matamarcianos al array de juegos
-availableGames.push({ id: 3, name: "Matamarcianos", func: "startGame3_Matamarcianos" });
-
-let matamarcianosActivo = false;
-
-function startGame3_Matamarcianos() {
-    matamarcianosActivo = true;
-    document.getElementById('arcanoidGameContainer').style.display = 'none';
-    document.getElementById('memoryGameContainer').classList.remove('active');
-    document.getElementById('matamarcianosGameContainer').style.display = 'block';
-
-    const canvas = document.getElementById("juegoCanvasMatamarcianos");
-    const ctx = canvas.getContext("2d");
-    const ancho = canvas.width;
-    const alto = canvas.height;
-
-    let bolaX = ancho / 2;
-    let bolaY = alto - 30;
-    let velocidadX = 2;
-    let velocidadY = -2;
-    const bolaRadio = 10;
-
-    const paletaAltura = 10;
-    const paletaAncho = 75;
-    let paletaX = (ancho - paletaAncho) / 2;
-
-    function dibujar() {
-        if (!matamarcianosActivo) return;
-
-        ctx.clearRect(0, 0, ancho, alto);
-
-        // Bola
-        ctx.beginPath();
-        ctx.arc(bolaX, bolaY, bolaRadio, 0, Math.PI * 2);
-        ctx.fillStyle = "#FF0077";
-        ctx.fill();
-        ctx.closePath();
-
-        // Paleta
-        ctx.beginPath();
-        ctx.rect(paletaX, alto - paletaAltura, paletaAncho, paletaAltura);
-        ctx.fillStyle = "#00FFC0";
-        ctx.fill();
-        ctx.closePath();
-
-        bolaX += velocidadX;
-        bolaY += velocidadY;
-
-        if (bolaX + velocidadX > ancho - bolaRadio || bolaX + velocidadX < bolaRadio) {
-            velocidadX = -velocidadX;
-        }
-        if (bolaY + velocidadY < bolaRadio) {
-            velocidadY = -velocidadY;
-        } else if (bolaY + velocidadY > alto - bolaRadio - paletaAltura) {
-            if (bolaX > paletaX && bolaX < paletaX + paletaAncho) {
-                velocidadY = -velocidadY;
-            } else if (bolaY + velocidadY > alto - bolaRadio) {
-                alert("¡Game Over! Te han golpeado o invadido.");
-                endGame();
-                return;
-            }
-        }
-
-        animationFrameId = requestAnimationFrame(dibujar);
+    // Oculta la pancarta de felicitación (importante si se ejecuta de nuevo)
+    const rewardMessage = document.getElementById('rewardMessage');
+    if (rewardMessage) {
+        rewardMessage.style.display = 'none';
     }
+    
+    // Lógica para seleccionar un juego aleatorio
+    const gameIndex = Math.floor(Math.random() * availableGames.length);
+    const selectedGame = availableGames[gameIndex];
 
-    canvas.onmousemove = (e) => {
-        const rect = canvas.getBoundingClientRect();
-        paletaX = e.clientX - rect.left - paletaAncho / 2;
-        if (paletaX < 0) paletaX = 0;
-        if (paletaX + paletaAncho > ancho) paletaX = ancho - paletaAncho;
-    };
-
-    canvas.ontouchmove = (e) => {
-        e.preventDefault();
-        if (e.touches.length > 0) {
-            const rect = canvas.getBoundingClientRect();
-            paletaX = e.touches[0].clientX - rect.left - paletaAncho / 2;
-            if (paletaX < 0) paletaX = 0;
-            if (paletaX + paletaAncho > ancho) paletaX = ancho - paletaAncho;
-        }
-    };
-
-    dibujar();
+    if (window[selectedGame.func]) {
+        // Llama a la función simplificada, que a su vez llama a showGameContainer()
+        window[selectedGame.func](); 
+    } else {
+        // Si el juego no está implementado, MUESTRA LA ALERTA, PERO NO LLAMES A ENDGAME()
+        alert(`Error: El juego '${selectedGame.name}' no está implementado.`);
+        
+        // CORRECCIÓN CRUCIAL: Llamamos a endGame() SOLAMENTE si hay un error
+        // para salir de la pantalla de juego, pero lo hacemos sin la recursión.
+        // La versión correcta de endGame ya no tiene este bucle infinito.
+        
+        // Simplemente volvemos a la pantalla de ejercicios.
+        hideAllScreens();
+        document.getElementById('exerciseScreen').classList.add('active');
+    }
 }
-
         document.addEventListener('DOMContentLoaded', () => {
     // ESTA LÍNEA ES CRUCIAL: Carga las evaluaciones cuando se cambia la asignatura
     document.getElementById('subjectChoose').addEventListener('change', populateEvaluations);
@@ -1976,6 +1652,7 @@ function startGame3_Matamarcianos() {
     hideAllScreens();
     document.getElementById('loginScreen').classList.add('active');
 });
+      
     </script>
 </body>
 </html>
