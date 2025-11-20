@@ -6,7 +6,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* =================================================================== */
-        /* ESTILOS CSS INCLUIDOS DIRECTAMENTE (OMITIDOS AQUÍ POR BREVEDAD) */
+        /* ESTILOS CSS INCLUIDOS DIRECTAMENTE */
         /* =================================================================== */
         body {
             font-family: 'Inter', Arial, sans-serif; 
@@ -237,7 +237,7 @@
         }
     </style>
     <script>
-        // La configuración REAL de tu proyecto, que resuelve el error "projectId not provided".
+        // La configuración REAL de tu proyecto.
         window.__firebase_config = JSON.stringify({
             "apiKey": "AIzaSyA2_vhF-3qbOEBB20B4t4fvAn8iBSNd6aE",
             "authDomain": "app-de-karla-b21a1.firebaseapp.com",
@@ -248,12 +248,13 @@
             "measurementId": "G-VXRF7BXCBX"
         });
         
-        // El ID de la aplicación que usamos internamente para las rutas de Firestore
+        // El ID de la aplicación para las rutas de Firestore
         window.__app_id = 'app-de-karla-b21a1';
         
         // Token inicial (null para autenticación anónima)
         window.__initial_auth_token = null; 
     </script>
+    
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -275,7 +276,12 @@
         window.loadTasks = loadTasks;
         window.loadRoutine = loadRoutine;
 
-        // Función para inicializar la autenticación
+        // --- DEFINICIÓN DE RUTAS (Collections) ---
+        window.getStudyDataPath = () => doc(window.db, `artifacts/${appId}/users/${window.userId}/study_data`, 'current_stats');
+        window.getTasksCollection = () => collection(window.db, `artifacts/${appId}/users/${window.userId}/tasks`);
+        window.getRoutineDataPath = () => doc(window.db, `artifacts/${appId}/users/${window.userId}/routine_data`, 'daily_schedule');
+
+        // --- FUNCIÓN PRINCIPAL DE AUTENTICACIÓN (CORREGIDA) ---
         async function initializeAuthAndFirestore() {
             try {
                 if (initialAuthToken) {
@@ -284,34 +290,43 @@
                     await signInAnonymously(window.auth);
                 }
                 
+                // EL OBSERVADOR SE DISPARA TAN PRONTO COMO TERMINA EL signInAnonymously
                 onAuthStateChanged(window.auth, (user) => {
                     if (user) {
                         window.userId = user.uid;
                         window.isAuthReady = true;
+
+                        // Llamamos a las cargas de datos (estas corren ASÍNCRONAMENTE)
                         loadStudyData(); 
                         loadTasks(); 
                         loadRoutineFromDB(); 
+                        
+                        // 💥 NAVEGACIÓN CORREGIDA: NAVEGAMOS INMEDIATAMENTE AQUÍ
+                        // Esto garantiza que la pantalla avance sin esperar la respuesta de Firestore.
+                        hideAllScreens();
+                        document.getElementById('subjectScreen').classList.add('active'); 
+                        
                     } else {
+                        // Si la sesión anónima falla o no hay usuario
                         window.userId = null;
                         window.isAuthReady = true; 
                         showCustomMessage('Sesión no iniciada. Usando modo anónimo. Tu progreso no se guardará.', 'info');
                         document.getElementById('sessionUserId').innerText = 'ANÓNIMO';
                         hideAllScreens();
-                        document.getElementById('loginScreen').classList.add('active');
+                        document.getElementById('loginScreen').classList.add('active'); // Navega a la pantalla de Login
                     }
                 });
             } catch (error) {
-                console.error("Error en la autenticación:", error);
-                showCustomMessage('Error al iniciar sesión. Inténtalo de nuevo.', 'error');
+                console.error("Error CRÍTICO en la autenticación:", error);
+                showCustomMessage('Error al iniciar sesión. ¡Verifica la API Key y la Autenticación Anónima!', 'error');
+                
+                // NAVEGACIÓN DE EMERGENCIA TRAS FALLO CRÍTICO
+                hideAllScreens();
+                document.getElementById('subjectScreen').classList.add('active');
             }
         }
 
-        // --- DEFINICIÓN DE RUTAS (Collections) ---
-        window.getStudyDataPath = () => doc(window.db, `artifacts/${appId}/users/${window.userId}/study_data`, 'current_stats');
-        window.getTasksCollection = () => collection(window.db, `artifacts/${appId}/users/${window.userId}/tasks`);
-        window.getRoutineDataPath = () => doc(window.db, `artifacts/${appId}/users/${window.userId}/routine_data`, 'daily_schedule');
-
-        initializeAuthAndFirestore();
+        initializeAuthAndFirestore(); // 💥 Esta es la llamada que inicia todo.
 
         document.addEventListener('DOMContentLoaded', () => {
              document.getElementById('subjectChoose').addEventListener('change', populateEvaluations);
@@ -489,9 +504,9 @@
         let currentTasks = [];
         let animationFrameId = null; 
 
-        // --- Estructura Curricular ---
+        // --- Estructura Curricular (Omitida por brevedad, es la misma que ya tenías) ---
         const curriculum = {
-            "Matemáticas": {
+             "Matemáticas": {
                 "1ºESO": {
                     "1ª evaluación": {
                         "Números y Operaciones": [
@@ -557,12 +572,12 @@
         }
         function hideCustomMessage() {
             document.getElementById('customMessageModal').style.display = 'none';
-            // Restaurar la función por defecto del botón después de usarlo para eliminar
             const modalBtn = document.getElementById('customMessageModal').querySelector('.main-button');
             modalBtn.onclick = hideCustomMessage; 
         }
 
         // --- Funciones de Persistencia (Firebase/Firestore) ---
+        // 💥 loadStudyData ha sido limpiada para no contener la navegación
         async function loadStudyData() {
             if (!window.isAuthReady || !window.userId) return;
             try {
@@ -582,8 +597,7 @@
             } finally {
                 document.getElementById('sessionUserId').innerText = window.userId || 'No disponible';
                 document.getElementById('loadingTasks').innerText = 'Añade tus tareas para empezar.';
-                hideAllScreens();
-                document.getElementById('subjectScreen').classList.add('active'); 
+                // 💥 LÍNEAS DE NAVEGACIÓN ELIMINADAS AQUÍ
             }
         }
         async function saveStudyData() {
@@ -619,7 +633,7 @@
                 return;
             }
             if (window.isAuthReady) {
-                 // La navegación a 'subjectScreen' la hace loadStudyData
+                 // La navegación ya se hace en onAuthStateChanged después de la autenticación
             } else {
                  showCustomMessage('Cargando sesión...', 'info');
             }
@@ -676,7 +690,7 @@
             nextQuestion(); 
         }
 
-        // --- Funciones de Ejercicio y Gamificación ---
+        // --- Funciones de Ejercicio y Gamificación (El resto del JS que ya estaba funcionando) ---
         function startExercises() {
             const subject = document.getElementById('subjectChoose').value;
             const evaluation = document.getElementById('evaluationChoose').value;
