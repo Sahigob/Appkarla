@@ -271,17 +271,17 @@
         window.isAuthReady = false;
         window.userId = null;
         
-        // Define las funciones de persistencia para hacerlas globales
+        // 🚨 CORRECCIÓN CLAVE: Asignar las funciones a las variables globales CORRECTAS
         window.loadStudyData = loadStudyData;
         window.loadTasks = loadTasks;
-        window.loadRoutine = loadRoutine;
+        window.loadRoutineFromDB = loadRoutineFromDB; // Asegura que loadRoutineFromDB sea global
 
         // --- DEFINICIÓN DE RUTAS (Collections) ---
         window.getStudyDataPath = () => doc(window.db, `artifacts/${appId}/users/${window.userId}/study_data`, 'current_stats');
         window.getTasksCollection = () => collection(window.db, `artifacts/${appId}/users/${window.userId}/tasks`);
         window.getRoutineDataPath = () => doc(window.db, `artifacts/${appId}/users/${window.userId}/routine_data`, 'daily_schedule');
 
-        // --- FUNCIÓN PRINCIPAL DE AUTENTICACIÓN (CORREGIDA) ---
+        // --- FUNCIÓN PRINCIPAL DE AUTENTICACIÓN ---
         async function initializeAuthAndFirestore() {
             try {
                 if (initialAuthToken) {
@@ -290,28 +290,23 @@
                     await signInAnonymously(window.auth);
                 }
                 
-                // EL OBSERVADOR SE DISPARA TAN PRONTO COMO TERMINA EL signInAnonymously
                 onAuthStateChanged(window.auth, (user) => {
                     if (user) {
                         window.userId = user.uid;
                         window.isAuthReady = true;
 
-                        // Llamamos a las cargas de datos (estas corren ASÍNCRONAMENTE)
                         loadStudyData(); 
                         loadTasks(); 
                         loadRoutineFromDB(); 
                         
-                        // 💥 NAVEGACIÓN CORREGIDA: NAVEGAMOS AQUI
                         hideAllScreens();
                         document.getElementById('subjectScreen').classList.add('active'); 
                         
                     } else {
-                        // Si la sesión anónima falla o no hay usuario
                         window.userId = null;
                         window.isAuthReady = true; 
                         showCustomMessage('Sesión no iniciada. Usando modo anónimo. Tu progreso no se guardará.', 'info');
                         document.getElementById('sessionUserId').innerText = 'ANÓNIMO';
-                        // 💥 FALLBACK: SI FALLA LA AUTENTICACIÓN, NAVEGA A LA PANTALLA DE LOGIN
                         hideAllScreens();
                         document.getElementById('loginScreen').classList.add('active'); 
                     }
@@ -320,18 +315,16 @@
                 console.error("Error CRÍTICO en la autenticación:", error);
                 showCustomMessage('Error al iniciar sesión. ¡Verifica la API Key y la Autenticación Anónima!', 'error');
                 
-                // NAVEGACIÓN DE EMERGENCIA TRAS FALLO CRÍTICO
                 hideAllScreens();
                 document.getElementById('subjectScreen').classList.add('active');
             }
         }
 
-        initializeAuthAndFirestore(); // 💥 Esta es la llamada que inicia todo.
+        initializeAuthAndFirestore(); 
 
         document.addEventListener('DOMContentLoaded', () => {
              document.getElementById('subjectChoose').addEventListener('change', populateEvaluations);
              document.getElementById('evaluationChoose').addEventListener('change', populateTopics);
-             // Se elimina el listener de login porque la sesión es automática.
         });
 
         // Hacemos las funciones necesarias accesibles globalmente
@@ -504,7 +497,7 @@
         let currentTasks = [];
         let animationFrameId = null; 
 
-        // --- Estructura Curricular (Omitida por brevedad, es la misma que ya tenías) ---
+        // --- Estructura Curricular (Mismo contenido) ---
         const curriculum = {
              "Matemáticas": {
                 "1ºESO": {
@@ -596,7 +589,6 @@
             } finally {
                 document.getElementById('sessionUserId').innerText = window.userId || 'No disponible';
                 document.getElementById('loadingTasks').innerText = 'Añade tus tareas para empezar.';
-                // NO NAVEGAMOS AQUÍ
             }
         }
         async function saveStudyData() {
@@ -624,7 +616,6 @@
                  populateEvaluations();
              }
         }
-        // Función goToSubjectFromLogin eliminada, ya que la sesión es automática.
         function goToSubjectFromExercise() {
             showScreen('subjectScreen');
         }
@@ -677,7 +668,7 @@
             nextQuestion(); 
         }
 
-        // --- Funciones de Ejercicio y Gamificación (El resto del JS que ya estaba funcionando) ---
+        // --- Funciones de Ejercicio y Gamificación ---
         function startExercises() {
             const subject = document.getElementById('subjectChoose').value;
             const evaluation = document.getElementById('evaluationChoose').value;
@@ -980,37 +971,40 @@
             document.getElementById('routineActivity').value = '';
             document.getElementById('routineDuration').value = '60';
         }
-       async function saveRoutine() {
-    // 1. COMPROBACIÓN INICIAL: Si la sesión no está lista, avisa y espera.
-    if (!window.isAuthReady || !window.userId) {
-        showCustomMessage('Cargando sesión... Espera un momento antes de guardar.', 'info');
         
-        // 🚨 PAUSA CLAVE: Damos 1.5 segundos a Firebase para terminar la autenticación anónima
-        await new Promise(resolve => setTimeout(resolve, 1500)); 
-        
-        // 2. COMPROBACIÓN FINAL: Si sigue sin estar listo después de esperar, aborta.
-        if (!window.isAuthReady || !window.userId) {
-             showCustomMessage('Sesión no lista. No se puede guardar. (Revisa tu conexión o la Autenticación Anónima en Firebase).', 'error');
-             return;
+        // 🚨 CORRECCIÓN FINAL EN saveRoutine(): Implementa la lógica de espera y error mejorada
+        async function saveRoutine() {
+            // 1. COMPROBACIÓN INICIAL: Si la sesión no está lista, avisa y espera.
+            if (!window.isAuthReady || !window.userId) {
+                showCustomMessage('Cargando sesión... Espera un momento antes de guardar.', 'info');
+                
+                // PAUSA CLAVE: Damos 1.5 segundos a Firebase para terminar la autenticación anónima
+                await new Promise(resolve => setTimeout(resolve, 1500)); 
+                
+                // 2. COMPROBACIÓN FINAL: Si sigue sin estar listo después de esperar, aborta.
+                if (!window.isAuthReady || !window.userId) {
+                     showCustomMessage('Sesión no lista. No se puede guardar. (Revisa tu conexión o la Autenticación Anónima en Firebase).', 'error');
+                     return;
+                }
+            }
+            
+            // 3. INTENTO DE GUARDAR
+            try {
+                const docRef = window.getRoutineDataPath();
+                await setDoc(docRef, { schedule: currentRoutine }); 
+                showCustomMessage('Rutina diaria guardada con éxito.', 'success');
+            } catch (e) {
+                console.error("Error al guardar rutina:", e);
+                
+                // 4. DIAGNÓSTICO DE ERROR (Especialmente 'permission-denied')
+                if (e.code === 'permission-denied') {
+                    showCustomMessage('Error de permiso: Revisa las Reglas de Seguridad de Firestore. Necesitan permitir escribir a usuarios autenticados.', 'error');
+                } else {
+                    showCustomMessage('Error al guardar rutina.', 'error');
+                }
+            }
         }
-    }
-    
-    // 3. INTENTO DE GUARDAR
-    try {
-        const docRef = window.getRoutineDataPath();
-        await setDoc(docRef, { schedule: currentRoutine }); 
-        showCustomMessage('Rutina diaria guardada con éxito.', 'success');
-    } catch (e) {
-        console.error("Error al guardar rutina:", e);
-        
-        // 4. DIAGNÓSTICO DE ERROR (Especialmente 'permission-denied')
-        if (e.code === 'permission-denied') {
-            showCustomMessage('Error de permiso: Revisa las Reglas de Seguridad de Firestore. Necesitan permitir escribir a usuarios autenticados.', 'error');
-        } else {
-            showCustomMessage('Error al guardar rutina.', 'error');
-        }
-    }
-}
+
         function renderRoutine() {
             const container = document.getElementById('scheduleContainer');
             container.innerHTML = '';
