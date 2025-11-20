@@ -1,11 +1,83 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>CarlaMaths App - 1ºESO</title>
+    <title>CarlaMaths App - 1ºESO (TDA Enhancements)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Firebase Imports for Firestore and Auth -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, orderBy, deleteDoc, updateDoc, addDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // --- CONFIGURACIÓN DE FIREBASE (VARIABLES GLOBALES DEL ENTORNO) ---
+        // Estas variables se proporcionan automáticamente y son OBLIGATORIAS.
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        setLogLevel('debug'); // Útil para ver logs de Firestore
+
+        const app = initializeApp(firebaseConfig);
+        window.db = getFirestore(app);
+        window.auth = getAuth(app);
+        window.isAuthReady = false;
+        window.userId = null;
+        
+        // Función para inicializar la autenticación
+        async function initializeAuthAndFirestore() {
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(window.auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(window.auth);
+                }
+                
+                onAuthStateChanged(window.auth, (user) => {
+                    if (user) {
+                        window.userId = user.uid;
+                        window.isAuthReady = true;
+                        // Una vez autenticado, cargar los datos de estudio, tareas y rutina
+                        loadStudyData();
+                        loadTasks();
+                        // Nota: La rutina se carga en el DOMContentLoaded
+                    } else {
+                        window.userId = null;
+                        window.isAuthReady = true; // Listo, incluso si es anónimo
+                        // Intentar re-autenticar o manejar la UI para el usuario no autenticado
+                        showCustomMessage('Sesión no iniciada. Usando modo anónimo.', 'info');
+                    }
+                });
+            } catch (error) {
+                console.error("Error en la autenticación:", error);
+                showCustomMessage('Error al iniciar sesión. Inténtalo de nuevo.', 'error');
+            }
+        }
+
+        // --- DEFINICIÓN DE RUTAS (Collections) ---
+        // Datos de estudio (puntos/nivel) - Privado
+        window.getStudyDataPath = () => doc(window.db, `artifacts/${appId}/users/${window.userId}/study_data`, 'current_stats');
+        // Tareas (Todoist-like) - Privado
+        window.getTasksCollection = () => collection(window.db, `artifacts/${appId}/users/${window.userId}/tasks`);
+        // Rutina (Tiimo-like) - Privado
+        window.getRoutineDataPath = () => doc(window.db, `artifacts/${appId}/users/${window.userId}/routine_data`, 'daily_schedule');
+
+        // Inicializar al cargar el script
+        initializeAuthAndFirestore();
+
+        // Para evitar problemas con el DOMContentLoaded en JS, iniciamos las poblaciones
+        // solo después de que se cargue el DOM y Firebase esté listo.
+        document.addEventListener('DOMContentLoaded', () => {
+             // Listener original
+             document.getElementById('subjectChoose').addEventListener('change', populateEvaluations);
+             document.getElementById('evaluationChoose').addEventListener('change', populateTopics);
+        });
+
+    </script>
+    <!-- Tailwind CSS (Usado para mejor estilo de los nuevos componentes) -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Inter', Arial, sans-serif; /* Usamos Inter para un look moderno */
             margin: 0;
             padding: 0;
             background-color: #f4f4f9;
@@ -21,52 +93,67 @@
             min-height: 100vh;
             background-color: #fff;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border-radius: 10px; /* Bordes redondeados */
+            text-align: left;
         }
         .screen.active {
             display: block;
         }
+        h2 {
+            font-size: 1.8em;
+            color: #4a7d4a; /* Tono verde oscuro */
+            margin-bottom: 20px;
+            text-align: center;
+        }
         /* Estilos de la pantalla de Ejercicios */
-        #exerciseScreen { background-color: #e6ffe6; } /* Verde claro */
+        #exerciseScreen { background-color: #e6ffe6; text-align: center; } /* Verde claro */
         .question-box {
             background-color: #fff;
             border: 2px solid #5cb85c;
             padding: 20px;
             border-radius: 10px;
             margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
         }
-        
         /* COLORES DE BOTONES PARA MEJOR CONTRASTE */
-        .options button {
+        .options button, .main-button {
             display: block;
             width: 100%;
             padding: 15px;
             margin: 10px 0;
             border: none;
-            border-radius: 5px;
-            /* Tono verde claro pastel para botones normales */
-            background-color: #a4e4a4; /* Verde muy claro para el botón inactivo */
-            color: #333; /* Texto oscuro para contraste */
+            border-radius: 8px;
+            background-color: #a4e4a4; 
+            color: #333; 
             font-size: 1.1em;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: background-color 0.3s, transform 0.1s;
+            font-weight: 600;
+        }
+        .main-button {
+            background-color: #5cb85c; /* Botón principal verde */
+            color: white;
+            box-shadow: 0 3px #3c8d3c;
+        }
+        .main-button:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px #3c8d3c;
         }
         .options button:hover:not(:disabled) {
-            background-color: #79d279; /* Un poco más oscuro al pasar el ratón */
+            background-color: #79d279; 
         }
         .options button.correct {
-            /* Verde fuerte para la respuesta correcta */
             background-color: #28a745; 
-            color: white; /* Texto blanco en verde oscuro */
+            color: white; 
             font-weight: bold;
         }
         .options button.wrong {
-            /* ROJO CLARO para la respuesta incorrecta seleccionada */
             background-color: #f17b7b; 
-            color: #333; /* Texto oscuro en el botón que falló */
+            color: #333; 
         }
-        /* Aseguramos que los botones deshabilitados sean muy claros */
         .options button:disabled {
-            opacity: 0.8;
+            opacity: 0.7;
             cursor: default;
         }
         
@@ -89,7 +176,7 @@
         #progress {
             height: 100%;
             width: 0%;
-            background-color: #ffc107; /* Amarillo para progreso */
+            background-color: #ffc107; 
             transition: width 0.5s;
         }
         .medal {
@@ -99,172 +186,188 @@
         .medal.active {
             opacity: 1;
         }
+        .reward-banner {
+            background-color: rgba(255, 255, 255, 0.95);
+            color: #333;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            z-index: 10;
+            position: relative;
+        }
+        /* ESTILOS PARA LOS SELECTORES DE ASIGNATURA/EVALUACIÓN/TEMA */
+        .subject-select {
+            display: block; 
+            width: 100%; 
+            padding: 10px 15px; 
+            margin: 10px 0; 
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1em;
+            box-sizing: border-box; 
+        }
 
-      
-.reward-banner {
-  background-color: rgba(255, 255, 255, 0.95);
-  color: #333;
-  padding: 20px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.2);
-  z-index: 10;
-  position: relative;
-}
-/* ESTILOS PARA LOS SELECTORES DE ASIGNATURA/EVALUACIÓN/TEMA */
-.subject-select {
-    display: block; /* Asegura que ocupe toda la línea */
-    width: 100%; /* Ocupa el 100% del ancho de su contenedor */
-    padding: 10px 15px; /* Relleno interior para mayor tamaño */
-    margin: 10px 0; /* Margen vertical para separarlos */
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    font-size: 1em;
-    box-sizing: border-box; /* Fundamental para que el padding no desborde el ancho */
-}
-@media (max-width: 768px) {
-    body {
-        font-size: 1em;
-    }
+        /* --- ESTILOS DE TAREAS (Todoist-like) --- */
+        .task-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 8px 0;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-left: 5px solid #007bff; /* Color de énfasis */
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .task-item.completed {
+            background-color: #e0f7e0;
+            border-left: 5px solid #28a745;
+            text-decoration: line-through;
+            opacity: 0.8;
+        }
+        .task-actions button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 1.2em;
+        }
+        .task-actions .delete-btn { color: #dc3545; }
+        .task-actions .complete-btn { color: #28a745; }
 
-    .screen {
-        padding: 10px;
-        box-shadow: none;
-    }
 
-    .question-box {
-        padding: 15px;
-    }
+        /* --- ESTILOS DE PLANIFICADOR VISUAL (Tiimo-like) --- */
+        #scheduleContainer {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .schedule-slot {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background-color: #fff0d6; /* Color cálido para el planificador */
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-left: 5px solid #ff9800;
+        }
+        .slot-time {
+            font-weight: bold;
+            color: #ff9800;
+            width: 30%;
+        }
+        .slot-activity {
+            flex-grow: 1;
+            text-align: left;
+        }
 
-    .options button {
-        font-size: 1em;
-        padding: 12px;
-        width: 100%;
-    }
+        /* ESTILOS DEL MODAL DE MENSAJE (Reemplaza a alert()) */
+        #customMessageModal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            backdrop-filter: blur(2px);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto; 
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%; 
+            max-width: 400px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        .modal-content p { margin-bottom: 20px; }
 
-    .gamification {
-        flex-direction: column;
-        gap: 10px;
-    }
 
-    .progress-bar-container {
-        width: 100%;
-        margin: 10px 0;
-    }
-
-    #mensaje-victoria-memory,
-    .reward-banner {
-        width: 95%;
-        padding: 15px;
-        font-size: 0.95em;
-    }
-
-    .game-container-memory {
-        grid-template-columns: repeat(2, 1fr);
-        width: 100%;
-        height: auto;
-    }
-
-    .memory-card {
-        aspect-ratio: 1 / 1;
-    }
-
-    canvas {
-        width: 100%;
-        height: auto;
-        max-width: 320px;
-    }
-
-    .medal {
-        font-size: clamp(1em, 5vw, 1.5em);
-        margin: 5px;
-    }
-
-    #reviewQuestions p {
-        word-wrap: break-word;
-        font-size: clamp(0.9em, 4vw, 1em);
-    }
-
-    input[type="text"],
-    input[type="number"],
-    select,
-    button {
-        font-size: 1em;
-    }
-}
-/* =================================================================== */
-/* Estilos de la pantalla de Juego (MODIFICADO) */
-/* =================================================================== */
-#gameScreen {
-    /* Eliminamos el fondo negro (usamos el fondo blanco/claro de .screen) */
-    background-color: #fff; 
-    min-height: 100vh; /* Asegura que cubra toda la vista */
-    display: none; 
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    padding: 0; /* Eliminamos el padding para que el juego se ajuste al borde */
-    max-width: none; /* Permitimos que ocupe todo el ancho */
-    box-shadow: none; /* Eliminamos la sombra */
-}
-#gameScreen.active {
-    display: flex; 
-}
-
-/* CONTENEDORES DE JUEGO (NUEVO) */
-/* Aseguramos que el contenedor del juego ocupe todo el espacio disponible */
-.game-container { 
-    width: 100%;
-    /* Alto de la pantalla menos el banner y el botón de volver */
-    height: calc(100vh - 100px); 
-    margin-top: 10px;
-    display: none;
-    flex-direction: column;
-    align-items: center;
-}
-.game-container.active {
-    display: flex;
-}
-
-/* Iframe para incrustar el juego (NUEVO) */
-.game-container iframe {
-    width: 100%;
-    /* 100% del alto disponible dentro de .game-container */
-    height: 100%; 
-    border: none; 
-}
+        /* Estilos Responsive */
+        @media (max-width: 768px) {
+            .screen {
+                padding: 10px;
+                box-shadow: none;
+                border-radius: 0;
+            }
+            .gamification {
+                flex-direction: column;
+                gap: 5px;
+            }
+            .progress-bar-container {
+                width: 100%;
+                margin: 5px 0;
+            }
+            .task-item {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 10px;
+            }
+            .task-details {
+                margin-bottom: 5px;
+            }
+        }
     </style>
 </head>
 <body>
 
+    <!-- =================================================================== -->
+    <!-- PANTALLA DE LOGIN -->
+    <!-- =================================================================== -->
     <div id="loginScreen" class="screen active">
         <h2>Bienvenido, Alex 👋</h2>
         <p>¡Vamos a repasar 1ºESO jugando!</p>
-        <input type="text" id="studentNameLogin" placeholder="Tu Nombre" style="padding: 10px; margin: 10px; width: 80%;">
-        <input type="number" id="studentAgeLogin" placeholder="Tu Edad" style="padding: 10px; margin: 10px; width: 80%;">
-        <button onclick="goToSubjectFromLogin()" style="padding: 15px; background-color: #007bff; color: white; border: none; border-radius: 5px; width: 80%; cursor: pointer;">Entrar</button>
-    </div>
+        <input type="text" id="studentNameLogin" placeholder="Tu Nombre" style="padding: 10px; margin: 10px 0; width: 80%; border-radius: 5px; border: 1px solid #ccc;">
+        <input type="number" id="studentAgeLogin" placeholder="Tu Edad" style="padding: 10px; margin: 10px 0; width: 80%; border-radius: 5px; border: 1px solid #ccc;">
+        <button onclick="goToSubjectFromLogin()" class="main-button">Entrar a la App</button>
+        <p class="text-xs text-gray-500 mt-4 text-center">ID de Sesión: <span id="sessionUserId">Cargando...</span></p>
+        <p class="text-xs text-gray-500 mt-2 text-center">Guarda este ID para compartir tu progreso.</p>
 
-    <div id="subjectScreen" class="screen">
-        <h2>Selecciona tu Tema de Estudio</h2>
-       <select id="subjectChoose" class="subject-select">
-    <option value="" disabled selected>-- Elige Asignatura --</option>
-    <option value="Matemáticas">Matemáticas</option>
-    <option value="Lengua">Lengua</option>
-    <option value="Sociales">Sociales</option>
+    </div>
     
-</select>
+    <!-- =================================================================== -->
+    <!-- PANTALLA DE SELECCIÓN DE TEMA (Menú principal) -->
+    <!-- =================================================================== -->
+    <div id="subjectScreen" class="screen">
+        <h2>Menú de Estudio</h2>
+        <div class="mb-4">
+            <button onclick="showScreen('exerciseScreen'); loadQuestion()" class="main-button" style="background-color: #5cb85c;">🚀 Empezar a Estudiar</button>
+            <button onclick="showScreen('taskManagerScreen')" class="main-button" style="background-color: #007bff; box-shadow: 0 3px #0056b3;">✅ Mi Gestor de Tareas (Todoist)</button>
+            <button onclick="showScreen('visualPlannerScreen')" class="main-button" style="background-color: #ff9800; box-shadow: 0 3px #e68a00;">📅 Mi Rutina Diaria (Tiimo)</button>
+            <button onclick="showScreen('reviewScreen')" class="main-button" style="background-color: #6c757d; box-shadow: 0 3px #545b62;">📈 Revisar Progreso</button>
+        </div>
 
-<select id="evaluationChoose" class="subject-select">
-    <option value="">--Selecciona Evaluación--</option>
-</select>
+        <h3>Selecciona tu Tema</h3>
+        <select id="subjectChoose" class="subject-select">
+            <option value="" disabled selected>-- Elige Asignatura --</option>
+            <option value="Matemáticas">Matemáticas</option>
+            <option value="Lengua">Lengua</option>
+            <option value="Sociales">Sociales</option>
+        </select>
 
-<select id="topicChoose" class="subject-select">
-    <option value="">--Selecciona Tema--</option>
-</select>
-        <button onclick="startExercises()" style="padding: 15px; background-color: #28a745; color: white; border: none; border-radius: 5px; width: 80%; cursor: pointer;">¡Empezar a Estudiar!</button>
+        <select id="evaluationChoose" class="subject-select">
+            <option value="">--Selecciona Evaluación--</option>
+        </select>
+
+        <select id="topicChoose" class="subject-select">
+            <option value="">--Selecciona Tema--</option>
+        </select>
+
+        <button onclick="startExercises()" class="main-button" style="background-color: #28a745;">Cargar Ejercicios</button>
     </div>
 
+    <!-- =================================================================== -->
+    <!-- PANTALLA DE EJERCICIOS -->
+    <!-- =================================================================== -->
     <div id="exerciseScreen" class="screen">
         <div class="gamification">
             <span id="levelDisplay">Nivel: 1</span>
@@ -287,71 +390,145 @@
             <button data-option-index="3"></button>
         </div>
 
-        <button onclick="nextQuestion()" style="padding: 15px; margin-top: 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; width: 80%; cursor: pointer;">Siguiente Pregunta</button>
-        <button onclick="goToReview()" style="padding: 10px; margin-top: 10px; background-color: #6c757d; color: white; border: none; border-radius: 5px; width: 80%; cursor: pointer;">Terminar Sesión (Revisar)</button>
+        <button onclick="nextQuestion()" class="main-button">Siguiente Pregunta</button>
+        <button onclick="goToReview()" class="main-button" style="background-color: #6c757d;">Terminar Sesión (Revisar)</button>
     </div>
 
+    <!-- =================================================================== -->
+    <!-- PANTALLA DE GESTOR DE TAREAS (Todoist-like) -->
+    <!-- =================================================================== -->
+    <div id="taskManagerScreen" class="screen">
+        <h2 style="text-align: left;">✅ Mis Asignaciones (Todoist-like)</h2>
+        <div class="mb-6 p-4 bg-gray-100 rounded-lg">
+            <input type="text" id="newTaskText" placeholder="Nueva tarea o asignación (Ej: 'Hacer el resumen de Historia')" class="subject-select">
+            <input type="date" id="newTaskDeadline" class="subject-select" title="Fecha Límite">
+            <button onclick="addTask()" class="main-button" style="background-color: #007bff; padding: 10px;">Añadir Tarea</button>
+        </div>
+
+        <div id="taskList" class="flex flex-col gap-2">
+            <!-- Las tareas se cargarán aquí por JavaScript -->
+            <p class="text-center text-gray-500" id="loadingTasks">Cargando tareas...</p>
+        </div>
+
+        <button onclick="showScreen('subjectScreen')" class="main-button mt-6" style="background-color: #333;">Volver al Menú</button>
+    </div>
+    
+    <!-- =================================================================== -->
+    <!-- PANTALLA DE PLANIFICADOR VISUAL (Tiimo-like) -->
+    <!-- =================================================================== -->
+    <div id="visualPlannerScreen" class="screen">
+        <h2 style="text-align: left;">📅 Mi Rutina Diaria (Tiimo-like)</h2>
+
+        <div class="mb-6 p-4 bg-gray-100 rounded-lg">
+            <p class="text-sm text-gray-600 mb-2">Define tu día: qué hacer y cuánto tiempo.</p>
+            <input type="time" id="routineStartTime" value="09:00" class="subject-select inline-block w-1/2 pr-1" style="width: 49%; padding-right: 0;">
+            <input type="text" id="routineActivity" placeholder="Actividad (Ej: 'Estudio de Matemáticas')" class="subject-select">
+            <select id="routineDuration" class="subject-select">
+                <option value="15">15 minutos</option>
+                <option value="30">30 minutos</option>
+                <option value="45">45 minutos</option>
+                <option value="60" selected>1 hora (60 minutos)</option>
+                <option value="90">1 hora y media</option>
+            </select>
+            <button onclick="addRoutineSlot()" class="main-button" style="background-color: #ff9800; padding: 10px;">Añadir Bloque</button>
+            <button onclick="saveRoutine()" class="main-button" style="background-color: #ff6f00; padding: 10px;">Guardar Rutina</button>
+        </div>
+
+        <h3>Tu Horario Visual</h3>
+        <div id="scheduleContainer">
+            <!-- Los bloques de rutina se cargarán aquí -->
+            <p class="text-center text-gray-500" id="loadingRoutine">Añade bloques de actividad.</p>
+        </div>
+
+        <button onclick="showScreen('subjectScreen')" class="main-button mt-6" style="background-color: #333;">Volver al Menú</button>
+    </div>
+
+
+    <!-- =================================================================== -->
+    <!-- PANTALLA DE REVISIÓN (Faltante) -->
+    <!-- =================================================================== -->
+    <div id="reviewScreen" class="screen">
+        <h2 style="text-align: center;">📈 Resumen de la Sesión</h2>
+        <div class="p-4 bg-yellow-100 rounded-lg mb-6 text-center">
+            <p class="text-lg font-bold text-yellow-800">Puntos Totales: <span id="finalPoints" class="text-2xl">0</span></p>
+            <p class="text-lg font-bold text-yellow-800">Nivel Alcanzado: <span id="finalLevel" class="text-2xl">1</span></p>
+        </div>
+        
+        <h3>Ejercicios Acertados:</h3>
+        <div id="reviewQuestions" class="mt-4 p-4 border rounded-lg bg-gray-50">
+            <!-- La lista de preguntas acertadas se cargará aquí -->
+        </div>
+
+        <button onclick="goToSubjectFromExercise()" class="main-button mt-6" style="background-color: #5cb85c;">Volver al Menú</button>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- PANTALLA DE JUEGOS -->
+    <!-- La estructura original de juegos se mantiene con los iframes -->
+    <!-- =================================================================== -->
     <div id="gameScreen" class="screen">
-        <div id="rewardMessage" class="reward-banner">
-    <h2>¡FELICIDADES, Alex! ¡PREMIO! 🎉</h2>
-    <p>Has subido al Nivel <span id="rewardLevel"></span>. Tómate un descanso y ¡a jugar!</p>
-</div>
+        <div id="rewardMessage" class="reward-banner" style="display: none;">
+            <h2>¡FELICIDADES, Alex! ¡PREMIO! 🎉</h2>
+            <p>Has subido al Nivel <span id="rewardLevel"></span>. Tómate un descanso y ¡a jugar!</p>
+        </div>
 
-<div id="arkanoidGameContainer" class="game-container">
-    <h2>ArKanoid Táctil</h2>
-    <iframe id="iframe_arkanoid" src="" frameborder="0" scrolling="no" allowfullscreen></iframe>
-</div> 
+        <div id="arkanoidGameContainer" class="game-container"> <h2>ArKanoid Táctil</h2> <iframe id="iframe_arkanoid" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> </div> 
+        <div id="memoriaGameContainer" class="game-container"> <h2>Juego de Pares</h2> <iframe id="iframe_memoria" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> </div>
+        <div id="matamarcianosGameContainer" class="game-container"> <h2>Matamarcianos</h2> <iframe id="iframe_matamarcianos" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> </div>
+        <div id="asteroidesGameContainer" class="game-container"> <h2>Juego de Asteroides</h2> <iframe id="iframe_asteroides" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> </div>
+        <div id="donkeykongGameContainer" class="game-container"> <h2>Donkeykong</h2> <iframe id="iframe_donkeykong" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> </div>
+        <div id="froggerGameContainer" class="game-container"> <h2>Juego de la Rana</h2> <iframe id="iframe_frogger" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> </div>
+        <div id="pongGameContainer" class="game-container"> <h2>Tenis</h2> <iframe id="iframe_pong" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> </div>
+        <div id="tictactoeGameContainer" class="game-container"> <h2>Tres en Raya</h2> <iframe id="iframe_tictactoe" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> </div> 
+        <div id="tetrisGameContainer" class="game-container"> <h2>Tetris Lite</h2> <iframe id="iframe_tetris" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> </div>
+        <div id="pacmanGameContainer" class="game-container"> <h2>Pacman</h2> <iframe id="iframe_pacman" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> </div>
+        
+        <div style="margin-top: 20px;">
+            <button onclick="endGame()" class="main-button" style="background-color: #dc3545;">Volver a los Ejercicios</button>
+        </div>
+    </div>
+    
+    <!-- =================================================================== -->
+    <!-- MODAL DE MENSAJES (Reemplaza a alert()) -->
+    <!-- =================================================================== -->
+    <div id="customMessageModal">
+        <div class="modal-content">
+            <p id="customMessageText"></p>
+            <button onclick="hideCustomMessage()" class="main-button" style="background-color: #5cb85c; width: auto; padding: 8px 20px;">Entendido</button>
+        </div>
+    </div>
 
-<div id="memoriaGameContainer" class="game-container">
-    <h2>Juego de Pares</h2>
-    <iframe id="iframe_memoria" src="" frameborder="0" scrolling="no" allowfullscreen></iframe>
-</div>
 
-<div id="matamarcianosGameContainer" class="game-container">
-    <h2>Matamarcianos</h2>
-    <iframe id="iframe_matamarcianos" src="" frameborder="0" scrolling="no" allowfullscreen></iframe>
-</div>
-
-<div id="asteroidesGameContainer" class="game-container"> 
-    <h2>Juego de Asteroides</h2>
-    <iframe id="iframe_asteroides" src="" frameborder="0" scrolling="no" allowfullscreen></iframe>
-</div>
-
-<div id="donkeykongGameContainer" class="game-container">
-    <h2>Donkeykong</h2>
-    <iframe id="iframe_donkeykong" src="" frameborder="0" scrolling="no" allowfullscreen></iframe>
-</div>
-
-<div id="froggerGameContainer" class="game-container">
-    <h2>Juego de la Rana</h2>
-    <iframe id="iframe_frogger" src="" frameborder="0" scrolling="no" allowfullscreen></iframe>
-</div>
-
-<div id="pongGameContainer" class="game-container"> 
-    <h2>Tenis</h2>
-    <iframe id="iframe_pong" src="" frameborder="0" scrolling="no" allowfullscreen></iframe>
-</div>
-
-<div id="tictactoeGameContainer" class="game-container">
-    <h2>Tres en Raya</h2>
-    <iframe id="iframe_tictactoe" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> 
-</div>
-
-<div id="tetrisGameContainer" class="game-container"> 
-    <h2>Tetris Lite</h2>
-    <iframe id="iframe_tetris" src="" frameborder="0" scrolling="no" allowfullscreen></iframe>
-</div>
-
-<div id="pacmanGameContainer" class="game-container"> 
-    <h2>Pacman</h2>
-    <iframe id="iframe_pacman" src="" frameborder="0" scrolling="no" allowfullscreen></iframe>
-</div>
-<div style="margin-top: 20px;">
-    <button onclick="endGame()" style="padding: 10px; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">Volver a los Ejercicios</button>
-</div>
     <script>
         // ===================================================================
-        // 1. ESTRUCTURA CURRICULAR (TU CÓDIGO)
+        // 1. VARIABLES GLOBALES DE ESTADO
+        // ===================================================================
+        let currentExercises = [];
+        let currentQ = 0;
+        let points = 0;
+        let level = 1;
+        let completedExercises = []; // Preguntas acertadas en la sesión actual
+        let answeredCurrentQuestion = false;
+        let currentRoutine = [];
+        let currentTasks = [];
+        let animationFrameId = null; 
+
+        // Lista de juegos disponibles con sus contenedores y archivos
+        const availableGames = [
+            { id: 1, name: "Arkanoid Táctil", func: "startGame1_Arkanoid", file: "arkanoid.html", container: "arkanoidGameContainer", iframe: "iframe_arkanoid" },
+            { id: 2, name: "Juego de Pares", func: "startGame2_Memoria", file: "memoria.html", container: "memoriaGameContainer", iframe: "iframe_memoria" },
+            { id: 3, name: "Matamarcianos", func: "startGame3_Matamarcianos", file: "matamarcianos.html", container: "matamarcianosGameContainer", iframe: "iframe_matamarcianos" },
+            { id: 4, name: "Juego de Asteroides", func: "startGame4_Asteroides", file: "asteroides.html", container: "asteroidesGameContainer", iframe: "iframe_asteroides" },
+            { id: 5, name: "Donkeykong", func: "startGame5_Donkeykong", file: "donkeykong.html", container: "donkeykongGameContainer", iframe: "iframe_donkeykong" },
+            { id: 6, name: "Juego de la Rana", func: "startGame6_Frogger", file: "frogger.html", container: "froggerGameContainer", iframe: "iframe_frogger" },
+            { id: 7, name: "Tenis", func: "startGame7_Pong", file: "pong.html", container: "pongGameContainer", iframe: "iframe_pong" },
+            { id: 8, name: "Tres en Raya", func: "startGame8_TicTacToe", file: "tictactoe.html", container: "tictactoeGameContainer", iframe: "iframe_tictactoe" },
+            { id: 9, name: "Tetris Lite", func: "startGame9_Tetris", file: "tetris.html", container: "tetrisGameContainer", iframe: "iframe_tetris" },
+            { id: 10, name: "Pacman", func: "startGame10_Pacman", file: "pacman.html", container: "pacmanGameContainer", iframe: "iframe_pacman" }
+        ];
+
+        // ===================================================================
+        // 2. ESTRUCTURA CURRICULAR (EJEMPLO COMPLETO)
         // ===================================================================
         const curriculum = {
             "Matemáticas": {
@@ -1208,161 +1385,149 @@
   { q: "¿Qué estilo artístico tiene arcos redondos y simetría?", options: ["Renacentista", "Gótico", "Románico", "Barroco"], correct: 0 },
   { q: "¿Qué clase social surgió con la economía del comercio?", options: ["Burgueses", "Nobles", "Monjes", "Campesinos"], correct: 0 },
   { q: "¿Quién realizó la primera vuelta al mundo por mar?", options: ["Cristóbal Colón", "Magallanes", "Vasco da Gama", "Hernán Cortés"], correct: 1 }
-
-  
-],
-
+                        ]
+                    }
+                 }
             }
+        };
+
+        // ===================================================================
+        // 3. FUNCIONES DE MENSAJES (Reemplazo de alert())
+        // ===================================================================
+
+        function showCustomMessage(message, type = 'error') {
+            const modal = document.getElementById('customMessageModal');
+            const messageText = document.getElementById('customMessageText');
+            const colorMap = {
+                error: '#dc3545',
+                info: '#007bff',
+                success: '#28a745'
+            };
+
+            messageText.innerText = message;
+            // Estilizar según el tipo de mensaje
+            modal.querySelector('.modal-content').style.border = `2px solid ${colorMap[type] || colorMap.error}`;
+            modal.style.display = 'block';
+        }
+
+        function hideCustomMessage() {
+            document.getElementById('customMessageModal').style.display = 'none';
+        }
+
+
+        // ===================================================================
+        // 4. FUNCIONES DE FIREBASE / PERSISTENCIA
+        // ===================================================================
+        
+        // Carga los puntos/nivel desde Firestore
+        async function loadStudyData() {
+            if (!window.isAuthReady || !window.userId) return;
+            try {
+                const docRef = window.getStudyDataPath();
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    points = data.points || 0;
+                    level = data.level || 1;
+                    
+                    // Aseguramos que los displays se actualicen
+                    updatePoints();
+                    updateLevel(); // Llama a la lógica de actualización, pero no debería subir de nivel solo por cargar
+                    updateMedals(); 
+                }
+            } catch (e) {
+                console.error("Error al cargar datos de estudio:", e);
+            } finally {
+                // Actualiza el ID de sesión
+                document.getElementById('sessionUserId').innerText = window.userId || 'No disponible';
+                document.getElementById('loadingTasks').innerText = 'Añade tus tareas para empezar.';
+
+                // Navegar a la pantalla de selección de tema
+                hideAllScreens();
+                document.getElementById('loginScreen').classList.add('active');
             }
         }
-    };
 
-        // ===================================================================
-        // 2. VARIABLES GLOBALES Y JUEGOS
-        // ===================================================================
-        let currentExercises = [];
-        let currentQ = 0;
-        let points = 0;
-        let level = 1;
-        let completedExercises = [];
-        let answeredCurrentQuestion = false;
-        
-
-        function showGameContainer(gameId) {
-    // 1. Ocultar todos los contenedores de juego
-    availableGames.forEach(game => {
-        const container = document.getElementById(game.container);
-        if (container) {
-            container.style.display = 'none';
+        // Guarda los puntos/nivel en Firestore
+        async function saveStudyData() {
+            if (!window.isAuthReady || !window.userId) return;
+            try {
+                const docRef = window.getStudyDataPath();
+                await setDoc(docRef, { 
+                    points: points, 
+                    level: level, 
+                    last_update: new Date().toISOString() 
+                }, { merge: true });
+            } catch (e) {
+                console.error("Error al guardar datos de estudio:", e);
+            }
         }
-    });
 
-    // 2. Mostrar el contenedor seleccionado y recargar el iframe
-    const selectedGame = availableGames.find(g => g.id === gameId);
-    if (selectedGame) {
-        document.getElementById(selectedGame.container).style.display = 'block';
-        
-        const iframe = document.getElementById(selectedGame.iframe);
-        if (iframe) {
-            // Esto recarga el iframe, asegurando que el juego se reinicia.
-            iframe.src = `juegos/${selectedGame.file}`; 
-        }
-    }
-}
-        
-// PEGA ESTE BLOQUE COMPLETO INMEDIATAMENTE DESPUÉS DE showGameContainer()
-
-// Estas funciones sirven como 'puentes' para el sistema de selección al azar.
-function startGame1_Arkanoid() { showGameContainer(1); }
-function startGame2_Memoria() { showGameContainer(2); }
-function startGame3_Matamarcianos() { showGameContainer(3); }
-function startGame4_Donkeykong() { showGameContainer(4); }
-function startGame5_Frogger() { showGameContainer(5); }
-function startGame6_Pong() { showGameContainer(6); }
-function startGame7_Tictactoe() { showGameContainer(7); }
-function startGame8_Asteroides() { showGameContainer(8); }
-function startGame9_Tetris() { showGameContainer(9); } 
-function startGame10_Pacman() { showGameContainer(10); }
-          
-const availableGames = [
-    { id: 1, name: "Arkanoid Táctil", func: "startGame1_Arkanoid", file: "arkanoid.html", container: "arkanoidGameContainer", iframe: "iframe_arkanoid" },
-    { id: 2, name: "Juego de Pares", func: "startGame2_Memoria", file: "memoria.html", container: "memoriaGameContainer", iframe: "iframe_memoria" },
-    { id: 3, name: "Matamarcianos", func: "startGame3_Matamarcianos", file: "matamarcianos.html", container: "matamarcianosGameContainer", iframe: "iframe_matamarcianos" },
-    { id: 4, name: "Donkeykong", func: "startGame4_Donkeykong", file: "donkeykong.html", container: "donkeykongGameContainer", iframe: "iframe_donkeykong" },
-    { id: 5, name: "Juego de la Rana", func: "startGame5_Frogger", file: "frogger.html", container: "froggerGameContainer", iframe: "iframe_frogger" },
-    { id: 6, name: "Tenis", func: "startGame6_Pong", file: "pong.html", container: "pongGameContainer", iframe: "iframe_pong" },
-    { id: 7, name: "Tres en Raya", func: "startGame7_Tictactoe", file: "tictactoe.html", container: "tictactoeGameContainer", iframe: "iframe_tictactoe" },
-    { id: 8, name: "Asteroides", func: "startGame8_Asteroides", file: "asteroides.html", container: "asteroidesGameContainer", iframe: "iframe_asteroides" },
-    { id: 9, name: "Tetris Lite", func: "startGame9_Tetris", file: "tetris.html", container: "tetrisGameContainer", iframe: "iframe_tetris" },
-    { id: 10, name: "Pacman", func: "startGame10_Pacman", file: "pacman.html", container: "pacmanGameContainer", iframe: "iframe_pacman" }
-    
-];
-
-        let animationFrameId = null; 
 
         // ===================================================================
-        // 3. FUNCIONES DE NAVEGACIÓN
+        // 5. NAVEGACIÓN Y SELECTORES
         // ===================================================================
 
         function hideAllScreens() {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         }
 
-        function goToSubjectFromLogin() {
-    const name = document.getElementById('studentNameLogin').value.trim();
-    const age = document.getElementById('studentAgeLogin').value.trim();
-    
-    if (!name || !age) {
-        alert('Introduce tu nombre y edad');
-        return;
-    }
-
-    // 1. Obtener la asignatura elegida (que será vacía, pero la preparamos)
-    const subjectChosen = document.getElementById('subjectChoose').value; 
-    
-    // 2. Limpiar y rellenar las evaluaciones (aunque solo haya una opción, lo hacemos seguro)
-    const evaluationSelect = document.getElementById('evaluationChoose');
-    evaluationSelect.innerHTML = '<option value="">--Selecciona Evaluación--</option>';
-
-    // Si hay una asignatura seleccionada desde el inicio (poco probable), la procesamos
-    const currentCurriculum = curriculum[subjectChosen] ? curriculum[subjectChosen]['1ºESO'] : {};
-    Object.keys(currentCurriculum).forEach(evalName => {
-        const o = document.createElement('option');
-        o.value = evalName;
-        o.text = evalName;
-        evaluationSelect.add(o);
-    });
-
-    // 3. Limpiar los temas
-    document.getElementById('topicChoose').innerHTML = '<option value="">--Selecciona Tema--</option>';
-    
-    // 4. Navegar a la pantalla de selección
-    hideAllScreens();
-    document.getElementById('subjectScreen').classList.add('active');
-}
-
-    // 1. Obtener la asignatura que el usuario ha seleccionado en el desplegable.
-    const subjectChosen = document.getElementById('subjectChoose').value; 
-    
-    // Comprobación de que la asignatura existe en el currículo para evitar errores.
-    const currentCurriculum = curriculum[subjectChosen] ? curriculum[subjectChosen]['1ºESO'] : {};
-    
-    // 2. Limpiar el selector de evaluaciones.
-    document.getElementById('evaluationChoose').innerHTML = '<option value="">--Selecciona Evaluación--</option>';
-    
-    // 3. Rellenar las evaluaciones usando la asignatura seleccionada (subjectChosen).
-    Object.keys(currentCurriculum).forEach(evalName => {
-        const o = document.createElement('option');
-        o.value = evalName;
-        o.text = evalName;
-        document.getElementById('evaluationChoose').add(o);
-    });
-    
-   
-
-    populateTopics(); // Llamar a esta función para rellenar los temas con la nueva asignatura/evaluación.
-
-    hideAllScreens();
-    document.getElementById('subjectScreen').classList.add('active');
-
-
-        function goToLogin() {
-            hideAllScreens();
-            document.getElementById('loginScreen').classList.add('active');
+        function showScreen(screenId) {
+             hideAllScreens();
+             document.getElementById(screenId).classList.add('active');
+             // Si volvemos al menú, aseguramos que la lista de temas esté actualizada
+             if (screenId === 'subjectScreen') {
+                populateEvaluations();
+             }
         }
 
+        function goToSubjectFromLogin() {
+            const name = document.getElementById('studentNameLogin').value.trim();
+            const age = document.getElementById('studentAgeLogin').value.trim();
+            
+            if (!name || !age) {
+                showCustomMessage('Introduce tu nombre y edad.', 'error');
+                return;
+            }
+            // Navegar al menú principal y esperar a que Firebase cargue datos
+            showScreen('subjectScreen');
+        }
+        
         function goToSubjectFromExercise() {
-            hideAllScreens();
-            document.getElementById('subjectScreen').classList.add('active');
+            showScreen('subjectScreen');
         }
 
         function goToReview() {
-            hideAllScreens();
-            document.getElementById('reviewScreen').classList.add('active');
+            showScreen('reviewScreen');
             updateReviewScreen();
         }
 
+        document.getElementById('subjectChoose').addEventListener('change', populateEvaluations);
         document.getElementById('evaluationChoose').addEventListener('change', populateTopics);
+
+
+        function populateEvaluations() {
+            const subjectChosen = document.getElementById('subjectChoose').value; 
+            const evaluationSelect = document.getElementById('evaluationChoose');
+            evaluationSelect.innerHTML = '<option value="">--Selecciona Evaluación--</option>';
+            
+            if (!subjectChosen) {
+                populateTopics();
+                return;
+            }
+            
+            const currentCurriculum = curriculum[subjectChosen] ? curriculum[subjectChosen]['1ºESO'] : {};
+            
+            Object.keys(currentCurriculum).forEach(evalName => {
+                const o = document.createElement('option');
+                o.value = evalName;
+                o.text = evalName;
+                evaluationSelect.add(o);
+            });
+
+            populateTopics(); 
+        }
 
         function populateTopics() {
             const subject = document.getElementById('subjectChoose').value;
@@ -1376,60 +1541,33 @@ const availableGames = [
                     o.value = t;
                     o.text = t;
                     topicSelect.add(o);
-                    
                 });
             }
         }
-        function populateEvaluations() {
-    const subjectChosen = document.getElementById('subjectChoose').value; 
-    const evaluationSelect = document.getElementById('evaluationChoose');
-    evaluationSelect.innerHTML = '<option value="">--Selecciona Evaluación--</option>';
-    
-    // Si no hay asignatura seleccionada, limpiamos los temas y salimos.
-    if (!subjectChosen) {
-        populateTopics();
-        return;
-    }
-    
-    const currentCurriculum = curriculum[subjectChosen] ? curriculum[subjectChosen]['1ºESO'] : {};
-    
-    Object.keys(currentCurriculum).forEach(evalName => {
-        const o = document.createElement('option');
-        o.value = evalName;
-        o.text = evalName;
-        evaluationSelect.add(o);
-    });
 
-    // Llamamos a populateTopics para asegurar que el selector de temas se limpia o actualiza.
-    populateTopics(); 
-}
-     function endGame() {
-    // 1. Detener cualquier animación de juego (si estaba en curso)
-    if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-        animationFrameId = null;
-    }
-    
-    // 2. Ocultar todos los contenedores de juego
-    document.querySelectorAll('.game-container').forEach(container => {
-        container.classList.remove('active');
-    });
+        function endGame() {
+            // 1. Detener cualquier animación de juego 
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            
+            // 2. Ocultar todos los contenedores de juego
+            document.querySelectorAll('.game-container').forEach(container => {
+                container.classList.remove('active');
+            });
 
-    // 3. Ocultar la pancarta de felicitación
-    const rewardMessage = document.getElementById('rewardMessage');
-    if (rewardMessage) {
-        rewardMessage.style.display = 'none'; 
-    }
+            // 3. Ocultar la pancarta de felicitación
+            document.getElementById('rewardMessage').style.display = 'none'; 
 
-    // 4. Volver a la pantalla de ejercicios y avanzar a la siguiente pregunta
-    hideAllScreens();
-    document.getElementById('exerciseScreen').classList.add('active');
-    answeredCurrentQuestion = true; 
-    nextQuestion(); 
-}
+            // 4. Volver a la pantalla de ejercicios y avanzar a la siguiente pregunta
+            showScreen('exerciseScreen');
+            answeredCurrentQuestion = true; 
+            nextQuestion(); 
+        }
 
         // ===================================================================
-        // 4. FUNCIONES DE JUEGO (EJERCICIOS)
+        // 6. FUNCIONES DE EJERCICIO Y GAMIFICACIÓN
         // ===================================================================
 
         function startExercises() {
@@ -1438,36 +1576,34 @@ const availableGames = [
             const topic = document.getElementById('topicChoose').value;
 
             if (!subject || !evaluation || !topic) {
-                alert('Selecciona asignatura, evaluación y tema');
+                showCustomMessage('Selecciona asignatura, evaluación y tema', 'error');
                 return;
             }
 
             const original = curriculum[subject]["1ºESO"][evaluation][topic];
+            // Lógica para mezclar y limitar preguntas
             const shuffled = [...original];
             for (let i = shuffled.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
             }
 
-            const maxQuestions = 100;
+            const maxQuestions = 100; // Límite máximo para la sesión
             currentExercises = shuffled.slice(0, Math.min(original.length, maxQuestions));
 
             currentQ = 0;
-            points = 0;
-            level = 1;
             completedExercises = [];
             answeredCurrentQuestion = false;
 
-            hideAllScreens();
-            document.getElementById('exerciseScreen').classList.add('active');
+            showScreen('exerciseScreen');
             document.getElementById('subjectTopic').innerText = `${subject} - ${topic}`;
             document.getElementById('totalQuestions').innerText = currentExercises.length;
+            
             updatePoints();
             updateLevel();
             updateMedals();
             loadQuestion();
         }
-
 
         function loadQuestion() {
             answeredCurrentQuestion = false;
@@ -1480,8 +1616,13 @@ const availableGames = [
             document.getElementById('questionText').innerText = q.q;
 
             const btns = document.querySelectorAll('.options button');
+            // Mezclar opciones
+            const optionIndexes = [0, 1, 2, 3].sort(() => Math.random() - 0.5); 
+            
             btns.forEach((btn, i) => {
-                btn.innerText = q.options[i];
+                const originalIndex = optionIndexes[i];
+                btn.innerText = q.options[originalIndex];
+                btn.setAttribute('data-original-index', originalIndex); // Guardamos el índice original
                 btn.className = '';
                 btn.disabled = false; 
             });
@@ -1496,37 +1637,41 @@ const availableGames = [
             if (answeredCurrentQuestion) return; 
 
             const q = currentExercises[currentQ];
-            const idx = parseInt(btn.getAttribute('data-option-index'));
+            const originalIndex = parseInt(btn.getAttribute('data-original-index'));
+            const correctOriginalIndex = q.correct;
+
             answeredCurrentQuestion = true; 
             
             document.querySelectorAll('.options button').forEach(b => b.disabled = true);
 
-            if (idx === q.correct) {
+            if (originalIndex === correctOriginalIndex) {
                 btn.classList.add('correct');
                 points++; 
                 completedExercises.push(q.q);
+                // Si la respuesta es correcta, buscamos el botón original correcto y lo marcamos
             } else {
                 btn.classList.add('wrong');
-                document.querySelector(`.options button[data-option-index="${q.correct}"]`).classList.add('correct');
+                // Si falló, buscamos el botón que contenía la respuesta correcta y lo marcamos también
+                document.querySelectorAll('.options button').forEach(b => {
+                    if (parseInt(b.getAttribute('data-original-index')) === correctOriginalIndex) {
+                        b.classList.add('correct');
+                    }
+                });
             }
             
             updatePoints(); 
             updateMedals();
-            updateLevel(); 
+            updateLevel(); // Esta función llama a saveStudyData y startRewardGame si sube de nivel
         }
 
         function nextQuestion() {
             if (!answeredCurrentQuestion) {
-                alert('Debes responder la pregunta actual antes de avanzar.');
+                showCustomMessage('Debes responder la pregunta actual antes de avanzar.', 'info');
                 return;
             }
             currentQ++;
             loadQuestion();
         }
-
-        // ===================================================================
-        // 5. FUNCIONES DE GAMIFICACIÓN
-        // ===================================================================
 
         function updatePoints() {
             document.getElementById('pointsDisplay').innerText = `Puntos: ${points}`;
@@ -1534,36 +1679,29 @@ const availableGames = [
             document.getElementById('progress').style.width = progress + '%';
         }
 
-       function updateLevel() {
-    // 1. Añadimos un chequeo de seguridad: Si no hay ejercicios cargados, salimos.
-    if (currentExercises.length === 0 && points === 0) {
-        // Aseguramos que el nivel inicial se muestre
-        document.getElementById('levelDisplay').innerText = `Nivel: ${level}`;
-        return; 
-    }
+        function updateLevel() {
+            if (currentExercises.length === 0 && points === 0) {
+                document.getElementById('levelDisplay').innerText = `Nivel: ${level}`;
+                return; 
+            }
 
-    const newLevel = Math.floor(points / 10) + 1; 
-    if (newLevel > level) {
-        level = newLevel;
-        
-        // El resto de la lógica de la recompensa
-        const rewardMessage = document.getElementById('rewardMessage');
-        if (rewardMessage) {
-            rewardMessage.style.display = 'block'; 
-            document.getElementById('rewardLevel').innerText = level;
+            const newLevel = Math.floor(points / 10) + 1; 
+            if (newLevel > level) {
+                level = newLevel;
+                saveStudyData(); // Guardar el nuevo nivel inmediatamente
+                
+                // Mostrar la pancarta y comenzar el juego de recompensa
+                document.getElementById('rewardMessage').style.display = 'block'; 
+                document.getElementById('rewardLevel').innerText = level;
+                
+                setTimeout(startRewardGame, 1500); // Retraso para que vea el mensaje
+                
+                if (level === 10) {
+                    showCustomMessage("¡Has alcanzado el nivel 10! ¡Eres un campeón del estudio!", 'success');
+                }
+            }
+            document.getElementById('levelDisplay').innerText = `Nivel: ${level}`;
         }
-        // Retraso para ver el mensaje, lo mantenemos por ahora
-        setTimeout(startRewardGame, 100); 
-        
-
-        // Mensaje especial
-        if (level === 10) {
-            alert("¡Has alcanzado el nivel 10! ¡Eres un campeón del estudio!");
-        }
-    }
-    document.getElementById('levelDisplay').innerText = `Nivel: ${level}`;
-}
-
 
         function updateMedals() {
             const container = document.getElementById('medals');
@@ -1596,63 +1734,303 @@ const availableGames = [
             const reviewDiv = document.getElementById('reviewQuestions');
             reviewDiv.innerHTML = '';
             if (completedExercises.length === 0) {
-                reviewDiv.innerHTML = '<p>No acertaste ninguna pregunta en esta sesión.</p>';
+                reviewDiv.innerHTML = '<p class="text-center text-gray-700">No acertaste ninguna pregunta en esta sesión. ¡Sigue practicando!</p>';
                 return;
             }
             completedExercises.forEach((q, i) => {
                 const p = document.createElement('p');
                 p.textContent = `${i + 1}. ${q}`;
+                p.className = 'py-1 border-b border-green-200 text-green-700 font-medium';
                 reviewDiv.appendChild(p);
             });
         }
         
         // ===================================================================
-        // 6. FUNCIONES DE PREMIO (JUEGOS)
+        // 7. FUNCIONES DE PREMIO (JUEGOS PLACEHOLDERS)
         // ===================================================================
 
-       function startRewardGame() {
-    hideAllScreens();
-    document.getElementById('gameScreen').classList.add('active');
-    document.getElementById('rewardLevel').innerText = level;
+        // Función auxiliar para mostrar el contenedor de juego
+        function showGameContainer(containerId, iframeId, file) {
+             document.querySelectorAll('.game-container').forEach(container => {
+                container.classList.remove('active');
+            });
+            document.getElementById(containerId).classList.add('active');
+            // Cargar el juego en el iframe (Usamos un placeholder por ahora)
+            document.getElementById(iframeId).src = `https://placehold.co/600x400/28a745/white?text=${file} Cargar Juego`;
+        }
 
-    // Oculta la pancarta de felicitación (importante si se ejecuta de nuevo)
-    const rewardMessage = document.getElementById('rewardMessage');
-    if (rewardMessage) {
-        rewardMessage.style.display = 'none';
-    }
-    
-    // Lógica para seleccionar un juego aleatorio
-    const gameIndex = Math.floor(Math.random() * availableGames.length);
-    const selectedGame = availableGames[gameIndex];
+        function startRewardGame() {
+            showScreen('gameScreen');
 
-    if (window[selectedGame.func]) {
-        // Llama a la función simplificada, que a su vez llama a showGameContainer()
-        window[selectedGame.func](); 
-    } else {
-        // Si el juego no está implementado, MUESTRA LA ALERTA, PERO NO LLAMES A ENDGAME()
-        alert(`Error: El juego '${selectedGame.name}' no está implementado.`);
+            // Oculta la pancarta de felicitación (para que solo se muestre una vez)
+            document.getElementById('rewardMessage').style.display = 'none';
+            
+            // Lógica para seleccionar un juego aleatorio
+            const gameIndex = Math.floor(Math.random() * availableGames.length);
+            const selectedGame = availableGames[gameIndex];
+
+            // Ya no necesitamos window[selectedGame.func] si usamos showGameContainer
+            // Simplemente mostramos el placeholder para el juego seleccionado
+            showGameContainer(selectedGame.container, selectedGame.iframe, selectedGame.name);
+        }
+
+        // Placeholders para las funciones de juego (obligatorio para evitar errores)
+        // Estos no serán llamados por startRewardGame, pero los dejamos si el usuario los llama manualmente
+        availableGames.forEach(game => {
+            window[game.func] = () => {
+                showGameContainer(game.container, game.iframe, game.name);
+            };
+        });
+
+        // ===================================================================
+        // 8. FUNCIONES GESTOR DE TAREAS (Todoist-like)
+        // ===================================================================
+
+        // Carga tareas desde Firestore
+        function loadTasks() {
+            if (!window.isAuthReady || !window.userId) return;
+            
+            const tasksCol = window.getTasksCollection();
+            const q = query(tasksCol, orderBy("deadline", "asc"));
+            
+            onSnapshot(q, (snapshot) => {
+                currentTasks = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    currentTasks.push({
+                        id: doc.id,
+                        text: data.text,
+                        deadline: data.deadline,
+                        completed: data.completed
+                    });
+                });
+                renderTasks();
+            }, (error) => {
+                console.error("Error al escuchar las tareas:", error);
+                document.getElementById('loadingTasks').innerText = 'Error al cargar tareas.';
+            });
+        }
+
+        // Renderiza las tareas en la UI
+        function renderTasks() {
+            const taskList = document.getElementById('taskList');
+            taskList.innerHTML = ''; 
+            
+            if (currentTasks.length === 0) {
+                taskList.innerHTML = '<p class="text-center text-gray-500">¡No hay tareas pendientes! Añade una para empezar.</p>';
+                return;
+            }
+
+            currentTasks.forEach(task => {
+                const taskDiv = document.createElement('div');
+                taskDiv.className = `task-item ${task.completed ? 'completed' : ''}`;
+                taskDiv.setAttribute('data-id', task.id);
+
+                const deadlineText = task.deadline ? new Date(task.deadline).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' }) : 'Sin fecha';
+                
+                taskDiv.innerHTML = `
+                    <div class="task-details flex-grow">
+                        <p class="font-medium">${task.text}</p>
+                        <p class="text-xs text-gray-500">Fecha límite: ${deadlineText}</p>
+                    </div>
+                    <div class="task-actions">
+                        <button class="complete-btn" onclick="toggleTaskCompletion('${task.id}', ${!task.completed})" title="Marcar como completada">
+                            ${task.completed ? '🔄' : '✅'}
+                        </button>
+                        <button class="delete-btn" onclick="deleteTask('${task.id}')" title="Eliminar tarea">
+                            🗑️
+                        </button>
+                    </div>
+                `;
+                taskList.appendChild(taskDiv);
+            });
+        }
+
+        // Añade una nueva tarea
+        async function addTask() {
+            if (!window.isAuthReady || !window.userId) {
+                showCustomMessage('Espera a que la sesión esté lista para añadir tareas.', 'info');
+                return;
+            }
+            const text = document.getElementById('newTaskText').value.trim();
+            const deadline = document.getElementById('newTaskDeadline').value; // Formato YYYY-MM-DD
+            
+            if (!text) {
+                showCustomMessage('El texto de la tarea no puede estar vacío.', 'error');
+                return;
+            }
+            
+            try {
+                const tasksCol = window.getTasksCollection();
+                await addDoc(tasksCol, {
+                    text: text,
+                    deadline: deadline,
+                    completed: false,
+                    createdAt: new Date().toISOString()
+                });
+                document.getElementById('newTaskText').value = '';
+                document.getElementById('newTaskDeadline').value = '';
+                showCustomMessage('Tarea añadida con éxito.', 'success');
+            } catch (e) {
+                console.error("Error al añadir tarea:", e);
+                showCustomMessage('Error al añadir tarea.', 'error');
+            }
+        }
+
+        // Marca/Desmarca una tarea como completada
+        async function toggleTaskCompletion(taskId, completedStatus) {
+            if (!window.isAuthReady || !window.userId) return;
+            try {
+                const taskRef = doc(window.getTasksCollection(), taskId);
+                await updateDoc(taskRef, { completed: completedStatus });
+            } catch (e) {
+                console.error("Error al actualizar tarea:", e);
+                showCustomMessage('Error al actualizar tarea.', 'error');
+            }
+        }
+
+        // Elimina una tarea
+        async function deleteTask(taskId) {
+            if (!window.isAuthReady || !window.userId) return;
+            if (!confirm('¿Seguro que quieres eliminar esta tarea?')) return; // Uso temporal de confirm()
+
+            try {
+                const taskRef = doc(window.getTasksCollection(), taskId);
+                await deleteDoc(taskRef);
+            } catch (e) {
+                console.error("Error al eliminar tarea:", e);
+                showCustomMessage('Error al eliminar tarea.', 'error');
+            }
+        }
         
-        // CORRECCIÓN CRUCIAL: Llamamos a endGame() SOLAMENTE si hay un error
-        // para salir de la pantalla de juego, pero lo hacemos sin la recursión.
-        // La versión correcta de endGame ya no tiene este bucle infinito.
-        
-        // Simplemente volvemos a la pantalla de ejercicios.
-        hideAllScreens();
-        document.getElementById('exerciseScreen').classList.add('active');
-    }
-}
-        document.addEventListener('DOMContentLoaded', () => {
-    // ESTA LÍNEA ES CRUCIAL: Carga las evaluaciones cuando se cambia la asignatura
-    document.getElementById('subjectChoose').addEventListener('change', populateEvaluations);
-    
-    // Esta línea es la que ya tenías y es correcta
-    document.getElementById('evaluationChoose').addEventListener('change', populateTopics);
-    
-    // Mostrar la pantalla de login al cargar
-    hideAllScreens();
-    document.getElementById('loginScreen').classList.add('active');
-});
-      
+        // ===================================================================
+        // 9. FUNCIONES PLANIFICADOR VISUAL (Tiimo-like)
+        // ===================================================================
+
+        // Inicializa la rutina al cargar la app
+        document.addEventListener('DOMContentLoaded', loadRoutine);
+
+        // Carga la rutina desde Firestore
+        async function loadRoutine() {
+             if (!window.isAuthReady || !window.userId) {
+                // Si la autenticación no está lista, configuramos el listener de rutina
+                // para que se ejecute después de la carga inicial.
+                onAuthStateChanged(window.auth, (user) => {
+                    if (user) {
+                        loadRoutineFromDB();
+                    }
+                });
+            } else {
+                loadRoutineFromDB();
+            }
+        }
+
+        async function loadRoutineFromDB() {
+            if (!window.isAuthReady || !window.userId) return;
+            try {
+                const docRef = window.getRoutineDataPath();
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    currentRoutine = docSnap.data().schedule || [];
+                }
+                renderRoutine();
+            } catch (e) {
+                console.error("Error al cargar rutina:", e);
+                document.getElementById('loadingRoutine').innerText = 'Error al cargar rutina.';
+            }
+        }
+
+        // Añade un bloque de actividad a la rutina local
+        function addRoutineSlot() {
+            const startTime = document.getElementById('routineStartTime').value;
+            const activity = document.getElementById('routineActivity').value.trim();
+            const duration = parseInt(document.getElementById('routineDuration').value);
+
+            if (!startTime || !activity) {
+                showCustomMessage('Debes especificar la hora de inicio y la actividad.', 'error');
+                return;
+            }
+
+            // Parsear hora para facilitar la ordenación
+            const timeParts = startTime.split(':').map(Number);
+            const sortKey = timeParts[0] * 60 + timeParts[1];
+
+            currentRoutine.push({ startTime, activity, duration, sortKey });
+            // Ordenar por hora de inicio
+            currentRoutine.sort((a, b) => a.sortKey - b.sortKey);
+            
+            renderRoutine();
+            // Limpiar campos después de añadir
+            document.getElementById('routineActivity').value = '';
+            document.getElementById('routineDuration').value = '60';
+        }
+
+        // Guarda la rutina en Firestore
+        async function saveRoutine() {
+            if (!window.isAuthReady || !window.userId) {
+                showCustomMessage('Espera a que la sesión esté lista para guardar la rutina.', 'info');
+                return;
+            }
+            try {
+                const docRef = window.getRoutineDataPath();
+                await setDoc(docRef, { schedule: currentRoutine });
+                showCustomMessage('Rutina diaria guardada con éxito.', 'success');
+            } catch (e) {
+                console.error("Error al guardar rutina:", e);
+                showCustomMessage('Error al guardar rutina.', 'error');
+            }
+        }
+
+        // Renderiza la rutina visualmente (Tiimo-like)
+        function renderRoutine() {
+            const container = document.getElementById('scheduleContainer');
+            container.innerHTML = '';
+
+            if (currentRoutine.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500">Añade bloques de actividad para crear tu horario visual.</p>';
+                return;
+            }
+
+            let currentTime = null;
+
+            currentRoutine.forEach((slot, index) => {
+                const slotDiv = document.createElement('div');
+                slotDiv.className = 'schedule-slot';
+
+                // Calcular hora de finalización
+                const [hour, minute] = slot.startTime.split(':').map(Number);
+                const start = new Date(2000, 0, 1, hour, minute);
+                const end = new Date(start.getTime() + slot.duration * 60000);
+                
+                const formatTime = (date) => date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0');
+                
+                const timeText = `${slot.startTime} - ${formatTime(end)}`;
+
+                slotDiv.innerHTML = `
+                    <div class="slot-time">${timeText}</div>
+                    <div class="slot-activity">${slot.activity} (${slot.duration} min)</div>
+                    <button onclick="removeRoutineSlot(${index})" class="delete-btn">🗑️</button>
+                `;
+                container.appendChild(slotDiv);
+            });
+        }
+
+        // Elimina un bloque de la rutina local
+        function removeRoutineSlot(index) {
+            currentRoutine.splice(index, 1);
+            renderRoutine();
+            showCustomMessage('Bloque de rutina eliminado. No olvides hacer clic en "Guardar Rutina" si deseas guardar este cambio permanentemente.', 'info');
+        }
+
+        // ===================================================================
+        // 10. INICIO
+        // ===================================================================
+
+        // El inicio de la aplicación está controlado por el script de Firebase
+        // que llama a loadStudyData() al finalizar la autenticación.
+        // El loadStudyData() es el que finalmente navega a la 'loginScreen' o 'subjectScreen'.
+
     </script>
 </body>
 </html>
