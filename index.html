@@ -301,8 +301,7 @@
                         loadTasks(); 
                         loadRoutineFromDB(); 
                         
-                        // 💥 NAVEGACIÓN CORREGIDA: NAVEGAMOS INMEDIATAMENTE AQUÍ
-                        // Esto garantiza que la pantalla avance sin esperar la respuesta de Firestore.
+                        // 💥 NAVEGACIÓN CORREGIDA: NAVEGAMOS AQUI
                         hideAllScreens();
                         document.getElementById('subjectScreen').classList.add('active'); 
                         
@@ -312,8 +311,9 @@
                         window.isAuthReady = true; 
                         showCustomMessage('Sesión no iniciada. Usando modo anónimo. Tu progreso no se guardará.', 'info');
                         document.getElementById('sessionUserId').innerText = 'ANÓNIMO';
+                        // 💥 FALLBACK: SI FALLA LA AUTENTICACIÓN, NAVEGA A LA PANTALLA DE LOGIN
                         hideAllScreens();
-                        document.getElementById('loginScreen').classList.add('active'); // Navega a la pantalla de Login
+                        document.getElementById('loginScreen').classList.add('active'); 
                     }
                 });
             } catch (error) {
@@ -331,6 +331,7 @@
         document.addEventListener('DOMContentLoaded', () => {
              document.getElementById('subjectChoose').addEventListener('change', populateEvaluations);
              document.getElementById('evaluationChoose').addEventListener('change', populateTopics);
+             // Se elimina el listener de login porque la sesión es automática.
         });
 
         // Hacemos las funciones necesarias accesibles globalmente
@@ -346,18 +347,17 @@
 </head>
 <body>
 
-    <div id="loginScreen" class="screen active">
+    <div id="loginScreen" class="screen">
         <h2>Bienvenido, Alex 👋</h2>
         <p>¡Vamos a repasar 1ºESO jugando!</p>
         <input type="text" id="studentNameLogin" placeholder="Tu Nombre" style="padding: 10px; margin: 10px 0; width: 80%; border-radius: 5px; border: 1px solid #ccc;">
         <input type="number" id="studentAgeLogin" placeholder="Tu Edad" style="padding: 10px; margin: 10px 0; width: 80%; border-radius: 5px; border: 1px solid #ccc;">
-        <button onclick="goToSubjectFromLogin()" class="main-button">Entrar a la App</button>
+        <button onclick="hideAllScreens(); document.getElementById('subjectScreen').classList.add('active');" class="main-button">Entrar a la App</button> 
         <p class="text-xs text-gray-500 mt-4 text-center">ID de Sesión: <span id="sessionUserId">Cargando...</span></p>
         <p class="text-xs text-gray-500 mt-2 text-center">Guarda este ID para compartir tu progreso.</p>
-
     </div>
     
-    <div id="subjectScreen" class="screen">
+    <div id="subjectScreen" class="screen active"> 
         <h2>Menú de Estudio</h2>
         <div class="mb-4">
             <button onclick="showScreen('exerciseScreen'); loadQuestion()" class="main-button" style="background-color: #5cb85c;">🚀 Empezar a Estudiar</button>
@@ -577,7 +577,6 @@
         }
 
         // --- Funciones de Persistencia (Firebase/Firestore) ---
-        // 💥 loadStudyData ha sido limpiada para no contener la navegación
         async function loadStudyData() {
             if (!window.isAuthReady || !window.userId) return;
             try {
@@ -597,7 +596,7 @@
             } finally {
                 document.getElementById('sessionUserId').innerText = window.userId || 'No disponible';
                 document.getElementById('loadingTasks').innerText = 'Añade tus tareas para empezar.';
-                // 💥 LÍNEAS DE NAVEGACIÓN ELIMINADAS AQUÍ
+                // NO NAVEGAMOS AQUÍ
             }
         }
         async function saveStudyData() {
@@ -625,19 +624,7 @@
                  populateEvaluations();
              }
         }
-        function goToSubjectFromLogin() {
-            const name = document.getElementById('studentNameLogin').value.trim();
-            const age = document.getElementById('studentAgeLogin').value.trim();
-            if (!name || !age) {
-                showCustomMessage('Introduce tu nombre y edad.', 'error');
-                return;
-            }
-            if (window.isAuthReady) {
-                 // La navegación ya se hace en onAuthStateChanged después de la autenticación
-            } else {
-                 showCustomMessage('Cargando sesión...', 'info');
-            }
-        }
+        // Función goToSubjectFromLogin eliminada, ya que la sesión es automática.
         function goToSubjectFromExercise() {
             showScreen('subjectScreen');
         }
