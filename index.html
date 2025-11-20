@@ -980,20 +980,37 @@
             document.getElementById('routineActivity').value = '';
             document.getElementById('routineDuration').value = '60';
         }
-        async function saveRoutine() {
-            if (!window.isAuthReady || !window.userId) {
-                showCustomMessage('Espera a que la sesión esté lista para guardar la rutina.', 'info');
-                return;
-            }
-            try {
-                const docRef = window.getRoutineDataPath();
-                await setDoc(docRef, { schedule: currentRoutine }); 
-                showCustomMessage('Rutina diaria guardada con éxito.', 'success');
-            } catch (e) {
-                console.error("Error al guardar rutina:", e);
-                showCustomMessage('Error al guardar rutina.', 'error');
-            }
+       async function saveRoutine() {
+    // 1. COMPROBACIÓN INICIAL: Si la sesión no está lista, avisa y espera.
+    if (!window.isAuthReady || !window.userId) {
+        showCustomMessage('Cargando sesión... Espera un momento antes de guardar.', 'info');
+        
+        // 🚨 PAUSA CLAVE: Damos 1.5 segundos a Firebase para terminar la autenticación anónima
+        await new Promise(resolve => setTimeout(resolve, 1500)); 
+        
+        // 2. COMPROBACIÓN FINAL: Si sigue sin estar listo después de esperar, aborta.
+        if (!window.isAuthReady || !window.userId) {
+             showCustomMessage('Sesión no lista. No se puede guardar. (Revisa tu conexión o la Autenticación Anónima en Firebase).', 'error');
+             return;
         }
+    }
+    
+    // 3. INTENTO DE GUARDAR
+    try {
+        const docRef = window.getRoutineDataPath();
+        await setDoc(docRef, { schedule: currentRoutine }); 
+        showCustomMessage('Rutina diaria guardada con éxito.', 'success');
+    } catch (e) {
+        console.error("Error al guardar rutina:", e);
+        
+        // 4. DIAGNÓSTICO DE ERROR (Especialmente 'permission-denied')
+        if (e.code === 'permission-denied') {
+            showCustomMessage('Error de permiso: Revisa las Reglas de Seguridad de Firestore. Necesitan permitir escribir a usuarios autenticados.', 'error');
+        } else {
+            showCustomMessage('Error al guardar rutina.', 'error');
+        }
+    }
+}
         function renderRoutine() {
             const container = document.getElementById('scheduleContainer');
             container.innerHTML = '';
