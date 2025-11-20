@@ -3,99 +3,13 @@
 <head>
     <title>CarlaMaths App - 1ºESO (TDA Enhancements)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script type="module">
-        // Importaciones de Firebase 
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, orderBy, deleteDoc, updateDoc, addDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
-        // --- CONFIGURACIÓN DE FIREBASE (VARIABLES GLOBALES DEL ENTORNO) ---
-        // Estas variables se proporcionan automáticamente y son OBLIGATORIAS.
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        // Aseguramos que el JSON sea parseado
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {}; 
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
-        // setLogLevel('debug'); // Útil para ver logs de Firestore
-
-        const app = initializeApp(firebaseConfig);
-        window.db = getFirestore(app);
-        window.auth = getAuth(app);
-        window.isAuthReady = false;
-        window.userId = null;
-        
-        // Define las funciones de persistencia para hacerlas globales antes de que se ejecute el DOMContentLoaded
-        window.loadStudyData = loadStudyData;
-        window.loadTasks = loadTasks;
-        window.loadRoutine = loadRoutine;
-
-        // Función para inicializar la autenticación
-        async function initializeAuthAndFirestore() {
-            try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(window.auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(window.auth);
-                }
-                
-                onAuthStateChanged(window.auth, (user) => {
-                    if (user) {
-                        window.userId = user.uid;
-                        window.isAuthReady = true;
-                        // Una vez autenticado, cargar los datos de estudio, tareas y rutina
-                        loadStudyData(); // Carga puntos/nivel y navega
-                        loadTasks(); // Inicia el listener de tareas
-                        loadRoutineFromDB(); // Carga la rutina
-                    } else {
-                        window.userId = null;
-                        window.isAuthReady = true; // Listo, incluso si es anónimo
-                        showCustomMessage('Sesión no iniciada. Usando modo anónimo. Tu progreso no se guardará.', 'info');
-                        // Aseguramos que la pantalla de inicio se muestre si falló la carga
-                        document.getElementById('sessionUserId').innerText = 'ANÓNIMO';
-                        hideAllScreens();
-                        document.getElementById('loginScreen').classList.add('active');
-                    }
-                });
-            } catch (error) {
-                console.error("Error en la autenticación:", error);
-                showCustomMessage('Error al iniciar sesión. Inténtalo de nuevo.', 'error');
-            }
-        }
-
-        // --- DEFINICIÓN DE RUTAS (Collections) ---
-        // Datos de estudio (puntos/nivel) - Privado
-        window.getStudyDataPath = () => doc(window.db, `artifacts/${appId}/users/${window.userId}/study_data`, 'current_stats');
-        // Tareas (Todoist-like) - Privado
-        window.getTasksCollection = () => collection(window.db, `artifacts/${appId}/users/${window.userId}/tasks`);
-        // Rutina (Tiimo-like) - Privado
-        window.getRoutineDataPath = () => doc(window.db, `artifacts/${appId}/users/${window.userId}/routine_data`, 'daily_schedule');
-
-        // Inicializar al cargar el script
-        initializeAuthAndFirestore();
-
-        // Para evitar problemas con el DOMContentLoaded en JS, iniciamos las poblaciones
-        // solo después de que se cargue el DOM y Firebase esté listo.
-        document.addEventListener('DOMContentLoaded', () => {
-             // Listener original
-             document.getElementById('subjectChoose').addEventListener('change', populateEvaluations);
-             document.getElementById('evaluationChoose').addEventListener('change', populateTopics);
-        });
-
-        // Hacemos las funciones necesarias accesibles globalmente desde el script principal (no module)
-        window.showCustomMessage = showCustomMessage;
-        window.hideCustomMessage = hideCustomMessage;
-        window.showScreen = showScreen;
-        window.deleteTask = deleteTask;
-        window.toggleTaskCompletion = toggleTaskCompletion;
-        window.loadRoutineFromDB = loadRoutineFromDB;
-
-
-    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* ... Estilos CSS aquí (se omiten por brevedad en la respuesta) ... */
+        /* =================================================================== */
+        /* ESTILOS CSS INCLUIDOS DIRECTAMENTE (OMITIDOS AQUÍ POR BREVEDAD) */
+        /* =================================================================== */
         body {
-            font-family: 'Inter', Arial, sans-serif; /* Usamos Inter para un look moderno */
+            font-family: 'Inter', Arial, sans-serif; 
             margin: 0;
             padding: 0;
             background-color: #f4f4f9;
@@ -111,7 +25,7 @@
             min-height: 100vh;
             background-color: #fff;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            border-radius: 10px; /* Bordes redondeados */
+            border-radius: 10px; 
             text-align: left;
         }
         .screen.active {
@@ -119,12 +33,11 @@
         }
         h2 {
             font-size: 1.8em;
-            color: #4a7d4a; /* Tono verde oscuro */
+            color: #4a7d4a; 
             margin-bottom: 20px;
             text-align: center;
         }
-        /* Estilos de la pantalla de Ejercicios */
-        #exerciseScreen { background-color: #e6ffe6; text-align: center; } /* Verde claro */
+        #exerciseScreen { background-color: #e6ffe6; text-align: center; } 
         .question-box {
             background-color: #fff;
             border: 2px solid #5cb85c;
@@ -134,7 +47,6 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             text-align: center;
         }
-        /* COLORES DE BOTONES PARA MEJOR CONTRASTE */
         .options button, .main-button {
             display: block;
             width: 100%;
@@ -150,7 +62,7 @@
             font-weight: 600;
         }
         .main-button {
-            background-color: #5cb85c; /* Botón principal verde */
+            background-color: #5cb85c; 
             color: white;
             box-shadow: 0 3px #3c8d3c;
         }
@@ -214,7 +126,6 @@
             z-index: 10;
             position: relative;
         }
-        /* ESTILOS PARA LOS SELECTORES DE ASIGNATURA/EVALUACIÓN/TEMA */
         .subject-select {
             display: block; 
             width: 100%; 
@@ -225,8 +136,6 @@
             font-size: 1em;
             box-sizing: border-box; 
         }
-
-        /* --- ESTILOS DE TAREAS (Todoist-like) --- */
         .task-item {
             display: flex;
             justify-content: space-between;
@@ -235,7 +144,7 @@
             margin: 8px 0;
             background-color: #f9f9f9;
             border: 1px solid #ddd;
-            border-left: 5px solid #007bff; /* Color de énfasis */
+            border-left: 5px solid #007bff; 
             border-radius: 5px;
             transition: background-color 0.3s;
         }
@@ -254,9 +163,6 @@
         }
         .task-actions .delete-btn { color: #dc3545; }
         .task-actions .complete-btn { color: #28a745; }
-
-
-        /* --- ESTILOS DE PLANIFICADOR VISUAL (Tiimo-like) --- */
         #scheduleContainer {
             margin-top: 20px;
             display: flex;
@@ -268,7 +174,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 15px;
-            background-color: #fff0d6; /* Color cálido para el planificador */
+            background-color: #fff0d6; 
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             border-left: 5px solid #ff9800;
@@ -282,8 +188,6 @@
             flex-grow: 1;
             text-align: left;
         }
-
-        /* ESTILOS DEL MODAL DE MENSAJE (Reemplaza a alert()) */
         #customMessageModal {
             display: none;
             position: fixed;
@@ -308,9 +212,6 @@
             text-align: center;
         }
         .modal-content p { margin-bottom: 20px; }
-
-
-        /* Estilos Responsive */
         @media (max-width: 768px) {
             .screen {
                 padding: 10px;
@@ -335,6 +236,98 @@
             }
         }
     </style>
+    <script>
+        // La configuración REAL de tu proyecto, que resuelve el error "projectId not provided".
+        window.__firebase_config = JSON.stringify({
+            "apiKey": "AIzaSyA2_vhF-3qbOEBB20B4t4fvAn8iBSNd6aE",
+            "authDomain": "app-de-karla-b21a1.firebaseapp.com",
+            "projectId": "app-de-karla-b21a1",
+            "storageBucket": "app-de-karla-b21a1.firebasestorage.app",
+            "messagingSenderId": "922949533120",
+            "appId": "1:922949533120:web:22562633843a07d40e1c25",
+            "measurementId": "G-VXRF7BXCBX"
+        });
+        
+        // El ID de la aplicación que usamos internamente para las rutas de Firestore
+        window.__app_id = 'app-de-karla-b21a1';
+        
+        // Token inicial (null para autenticación anónima)
+        window.__initial_auth_token = null; 
+    </script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, orderBy, deleteDoc, updateDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // --- CONFIGURACIÓN DE FIREBASE ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {}; 
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        const app = initializeApp(firebaseConfig);
+        window.db = getFirestore(app);
+        window.auth = getAuth(app);
+        window.isAuthReady = false;
+        window.userId = null;
+        
+        // Define las funciones de persistencia para hacerlas globales
+        window.loadStudyData = loadStudyData;
+        window.loadTasks = loadTasks;
+        window.loadRoutine = loadRoutine;
+
+        // Función para inicializar la autenticación
+        async function initializeAuthAndFirestore() {
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(window.auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(window.auth);
+                }
+                
+                onAuthStateChanged(window.auth, (user) => {
+                    if (user) {
+                        window.userId = user.uid;
+                        window.isAuthReady = true;
+                        loadStudyData(); 
+                        loadTasks(); 
+                        loadRoutineFromDB(); 
+                    } else {
+                        window.userId = null;
+                        window.isAuthReady = true; 
+                        showCustomMessage('Sesión no iniciada. Usando modo anónimo. Tu progreso no se guardará.', 'info');
+                        document.getElementById('sessionUserId').innerText = 'ANÓNIMO';
+                        hideAllScreens();
+                        document.getElementById('loginScreen').classList.add('active');
+                    }
+                });
+            } catch (error) {
+                console.error("Error en la autenticación:", error);
+                showCustomMessage('Error al iniciar sesión. Inténtalo de nuevo.', 'error');
+            }
+        }
+
+        // --- DEFINICIÓN DE RUTAS (Collections) ---
+        window.getStudyDataPath = () => doc(window.db, `artifacts/${appId}/users/${window.userId}/study_data`, 'current_stats');
+        window.getTasksCollection = () => collection(window.db, `artifacts/${appId}/users/${window.userId}/tasks`);
+        window.getRoutineDataPath = () => doc(window.db, `artifacts/${appId}/users/${window.userId}/routine_data`, 'daily_schedule');
+
+        initializeAuthAndFirestore();
+
+        document.addEventListener('DOMContentLoaded', () => {
+             document.getElementById('subjectChoose').addEventListener('change', populateEvaluations);
+             document.getElementById('evaluationChoose').addEventListener('change', populateTopics);
+        });
+
+        // Hacemos las funciones necesarias accesibles globalmente
+        window.showCustomMessage = showCustomMessage;
+        window.hideCustomMessage = hideCustomMessage;
+        window.showScreen = showScreen;
+        window.deleteTask = deleteTask;
+        window.toggleTaskCompletion = toggleTaskCompletion;
+        window.loadRoutineFromDB = loadRoutineFromDB;
+        window.hideAllScreens = hideAllScreens;
+
+    </script>
 </head>
 <body>
 
@@ -454,7 +447,7 @@
         
         <h3>Ejercicios Acertados:</h3>
         <div id="reviewQuestions" class="mt-4 p-4 border rounded-lg bg-gray-50">
-            </div>
+        </div>
 
         <button onclick="goToSubjectFromExercise()" class="main-button mt-6" style="background-color: #5cb85c;">Volver al Menú</button>
     </div>
@@ -467,15 +460,6 @@
 
         <div id="arkanoidGameContainer" class="game-container"> <h2>ArKanoid Táctil</h2> <iframe id="iframe_arkanoid" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> </div> 
         <div id="memoriaGameContainer" class="game-container"> <h2>Juego de Pares</h2> <iframe id="iframe_memoria" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> </div>
-        <div id="matamarcianosGameContainer" class="game-container"> <h2>Matamarcianos</h2> <iframe id="iframe_matamarcianos" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> </div>
-        <div id="asteroidesGameContainer" class="game-container"> <h2>Juego de Asteroides</h2> <iframe id="iframe_asteroides" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> </div>
-        <div id="donkeykongGameContainer" class="game-container"> <h2>Donkeykong</h2> <iframe id="iframe_donkeykong" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> </div>
-        <div id="froggerGameContainer" class="game-container"> <h2>Juego de la Rana</h2> <iframe id="iframe_frogger" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> </div>
-        <div id="pongGameContainer" class="game-container"> <h2>Tenis</h2> <iframe id="iframe_pong" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> </div>
-        <div id="tictactoeGameContainer" class="game-container"> <h2>Tres en Raya</h2> <iframe id="iframe_tictactoe" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> </div> 
-        <div id="tetrisGameContainer" class="game-container"> <h2>Tetris Lite</h2> <iframe id="iframe_tetris" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> </div>
-        <div id="pacmanGameContainer" class="game-container"> <h2>Pacman</h2> <iframe id="iframe_pacman" src="" frameborder="0" scrolling="no" allowfullscreen></iframe> </div>
-        
         <div style="margin-top: 20px;">
             <button onclick="endGame()" class="main-button" style="background-color: #dc3545;">Volver a los Ejercicios</button>
         </div>
@@ -491,42 +475,27 @@
 
     <script>
         // ===================================================================
-        // 1. VARIABLES GLOBALES DE ESTADO
+        // 3. FUNCIONES GLOBALES Y ESTRUCTURA CURRICULAR (RESTO DEL CÓDIGO JS)
         // ===================================================================
+        
+        // --- Variables Globales ---
         let currentExercises = [];
         let currentQ = 0;
         let points = 0;
         let level = 1;
-        let completedExercises = []; // Preguntas acertadas en la sesión actual
+        let completedExercises = []; 
         let answeredCurrentQuestion = false;
         let currentRoutine = [];
         let currentTasks = [];
         let animationFrameId = null; 
 
-        // Lista de juegos disponibles con sus contenedores y archivos
-        const availableGames = [
-            { id: 1, name: "Arkanoid Táctil", func: "startGame1_Arkanoid", file: "arkanoid.html", container: "arkanoidGameContainer", iframe: "iframe_arkanoid" },
-            { id: 2, name: "Juego de Pares", func: "startGame2_Memoria", file: "memoria.html", container: "memoriaGameContainer", iframe: "iframe_memoria" },
-            { id: 3, name: "Matamarcianos", func: "startGame3_Matamarcianos", file: "matamarcianos.html", container: "matamarcianosGameContainer", iframe: "iframe_matamarcianos" },
-            { id: 4, name: "Juego de Asteroides", func: "startGame4_Asteroides", file: "asteroides.html", container: "asteroidesGameContainer", iframe: "iframe_asteroides" },
-            { id: 5, name: "Donkeykong", func: "startGame5_Donkeykong", file: "donkeykong.html", container: "donkeykongGameContainer", iframe: "iframe_donkeykong" },
-            { id: 6, name: "Juego de la Rana", func: "startGame6_Frogger", file: "frogger.html", container: "froggerGameContainer", iframe: "iframe_frogger" },
-            { id: 7, name: "Tenis", func: "startGame7_Pong", file: "pong.html", container: "pongGameContainer", iframe: "iframe_pong" },
-            { id: 8, name: "Tres en Raya", func: "startGame8_TicTacToe", file: "tictactoe.html", container: "tictactoeGameContainer", iframe: "iframe_tictactoe" },
-            { id: 9, name: "Tetris Lite", func: "startGame9_Tetris", file: "tetris.html", container: "tetrisGameContainer", iframe: "iframe_tetris" },
-            { id: 10, name: "Pacman", func: "startGame10_Pacman", file: "pacman.html", container: "pacmanGameContainer", iframe: "iframe_pacman" }
-        ];
-
-        // ===================================================================
-        // 2. ESTRUCTURA CURRICULAR (EJEMPLO COMPLETO)
-        // ===================================================================
+        // --- Estructura Curricular ---
         const curriculum = {
             "Matemáticas": {
                 "1ºESO": {
                     "1ª evaluación": {
                         "Números y Operaciones": [
                             { q: "¿Cómo se lee 1.345.000?", options: ["Un millón trescientos cuarenta y cinco mil", "Trece millones", "Ciento treinta y cuatro mil", "Un billón"], correct: 0 },
-                            // Se asume que el resto del currículum va aquí...
                             { q: "¿Qué es un número primo?", options: ["Un número que solo es divisible por 1 y por sí mismo", "Un número divisible por 2", "Un número mayor que 10", "Un número que termina en 5"], correct: 0 }
                         ],
                         "Geometría Básica": [
@@ -560,10 +529,20 @@
             }
         };
 
-        // ===================================================================
-        // 3. FUNCIONES DE MENSAJES (Reemplazo de alert())
-        // ===================================================================
+        const availableGames = [
+            { id: 1, name: "Arkanoid Táctil", func: "startGame1_Arkanoid", file: "arkanoid.html", container: "arkanoidGameContainer", iframe: "iframe_arkanoid" },
+            { id: 2, name: "Juego de Pares", func: "startGame2_Memoria", file: "memoria.html", container: "memoriaGameContainer", iframe: "iframe_memoria" },
+            { id: 3, name: "Matamarcianos", func: "startGame3_Matamarcianos", file: "matamarcianos.html", container: "matamarcianosGameContainer", iframe: "iframe_matamarcianos" },
+            { id: 4, name: "Juego de Asteroides", func: "startGame4_Asteroides", file: "asteroides.html", container: "asteroidesGameContainer", iframe: "iframe_asteroides" },
+            { id: 5, name: "Donkeykong", func: "startGame5_Donkeykong", file: "donkeykong.html", container: "donkeykongGameContainer", iframe: "iframe_donkeykong" },
+            { id: 6, name: "Juego de la Rana", func: "startGame6_Frogger", file: "frogger.html", container: "froggerGameContainer", iframe: "iframe_frogger" },
+            { id: 7, name: "Tenis", func: "startGame7_Pong", file: "pong.html", container: "pongGameContainer", iframe: "iframe_pong" },
+            { id: 8, name: "Tres en Raya", func: "startGame8_TicTacToe", file: "tictactoe.html", container: "tictactoeGameContainer", iframe: "iframe_tictactoe" },
+            { id: 9, name: "Tetris Lite", func: "startGame9_Tetris", file: "tetris.html", container: "tetrisGameContainer", iframe: "iframe_tetris" },
+            { id: 10, name: "Pacman", func: "startGame10_Pacman", file: "pacman.html", container: "pacmanGameContainer", iframe: "iframe_pacman" }
+        ];
 
+        // --- Funciones de Mensajes ---
         function showCustomMessage(message, type = 'error') {
             const modal = document.getElementById('customMessageModal');
             const messageText = document.getElementById('customMessageText');
@@ -572,23 +551,18 @@
                 info: '#007bff',
                 success: '#28a745'
             };
-
             messageText.innerText = message;
-            // Estilizar según el tipo de mensaje
             modal.querySelector('.modal-content').style.border = `2px solid ${colorMap[type] || colorMap.error}`;
             modal.style.display = 'block';
         }
-
         function hideCustomMessage() {
             document.getElementById('customMessageModal').style.display = 'none';
+            // Restaurar la función por defecto del botón después de usarlo para eliminar
+            const modalBtn = document.getElementById('customMessageModal').querySelector('.main-button');
+            modalBtn.onclick = hideCustomMessage; 
         }
 
-
-        // ===================================================================
-        // 4. FUNCIONES DE FIREBASE / PERSISTENCIA
-        // ===================================================================
-        
-        // Carga los puntos/nivel desde Firestore
+        // --- Funciones de Persistencia (Firebase/Firestore) ---
         async function loadStudyData() {
             if (!window.isAuthReady || !window.userId) return;
             try {
@@ -599,26 +573,19 @@
                     const data = docSnap.data();
                     points = data.points || 0;
                     level = data.level || 1;
-                    
-                    // Aseguramos que los displays se actualicen
                     updatePoints();
-                    updateLevel(); // Llama a la lógica de actualización, pero no debería subir de nivel solo por cargar
+                    updateLevel(); 
                     updateMedals(); 
                 }
             } catch (e) {
                 console.error("Error al cargar datos de estudio:", e);
             } finally {
-                // Actualiza el ID de sesión
                 document.getElementById('sessionUserId').innerText = window.userId || 'No disponible';
                 document.getElementById('loadingTasks').innerText = 'Añade tus tareas para empezar.';
-
-                // Navegar a la pantalla de selección de tema
                 hideAllScreens();
-                document.getElementById('subjectScreen').classList.add('active'); // Navegar a subjectScreen directamente
+                document.getElementById('subjectScreen').classList.add('active'); 
             }
         }
-
-        // Guarda los puntos/nivel en Firestore
         async function saveStudyData() {
             if (!window.isAuthReady || !window.userId) return;
             try {
@@ -633,85 +600,59 @@
             }
         }
 
-
-        // ===================================================================
-        // 5. NAVEGACIÓN Y SELECTORES
-        // ===================================================================
-
+        // --- Funciones de Navegación y Selectores ---
         function hideAllScreens() {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         }
-
         function showScreen(screenId) {
              hideAllScreens();
              document.getElementById(screenId).classList.add('active');
-             // Si volvemos al menú, aseguramos que la lista de temas esté actualizada
              if (screenId === 'subjectScreen') {
                  populateEvaluations();
              }
         }
-
         function goToSubjectFromLogin() {
             const name = document.getElementById('studentNameLogin').value.trim();
             const age = document.getElementById('studentAgeLogin').value.trim();
-            
             if (!name || !age) {
                 showCustomMessage('Introduce tu nombre y edad.', 'error');
                 return;
             }
-            // Navegar al menú principal y esperar a que Firebase cargue datos
-            // La navegación real se hace en loadStudyData (llamada por initializeAuthAndFirestore)
-            // Si ya cargó, navegamos. Si no, esperamos a que el listener de Auth lo haga.
             if (window.isAuthReady) {
-                 showScreen('subjectScreen');
+                 // La navegación a 'subjectScreen' la hace loadStudyData
             } else {
                  showCustomMessage('Cargando sesión...', 'info');
             }
         }
-        
         function goToSubjectFromExercise() {
             showScreen('subjectScreen');
         }
-
         function goToReview() {
             showScreen('reviewScreen');
             updateReviewScreen();
         }
-
-        // Ya añadido en el script module:
-        // document.getElementById('subjectChoose').addEventListener('change', populateEvaluations);
-        // document.getElementById('evaluationChoose').addEventListener('change', populateTopics);
-
-
         function populateEvaluations() {
             const subjectChosen = document.getElementById('subjectChoose').value; 
             const evaluationSelect = document.getElementById('evaluationChoose');
             evaluationSelect.innerHTML = '<option value="">--Selecciona Evaluación--</option>';
-            
             if (!subjectChosen) {
                 populateTopics();
                 return;
             }
-            
-            // Aseguramos que solo buscamos en 1ºESO, según la estructura
             const currentCurriculum = curriculum[subjectChosen] ? curriculum[subjectChosen]['1ºESO'] : {};
-            
             Object.keys(currentCurriculum).forEach(evalName => {
                 const o = document.createElement('option');
                 o.value = evalName;
                 o.text = evalName;
                 evaluationSelect.add(o);
             });
-
             populateTopics(); 
         }
-
         function populateTopics() {
             const subject = document.getElementById('subjectChoose').value;
             const evaluation = document.getElementById('evaluationChoose').value;
             const topicSelect = document.getElementById('topicChoose');
             topicSelect.innerHTML = '<option value="">--Selecciona Tema--</option>';
-
             if (subject && evaluation && curriculum[subject]["1ºESO"][evaluation]) {
                 Object.keys(curriculum[subject]["1ºESO"][evaluation]).forEach(t => {
                     const o = document.createElement('option');
@@ -721,126 +662,93 @@
                 });
             }
         }
-
         function endGame() {
-            // 1. Detener cualquier animación de juego 
             if (animationFrameId) {
                 cancelAnimationFrame(animationFrameId);
                 animationFrameId = null;
             }
-            
-            // 2. Ocultar todos los contenedores de juego
             document.querySelectorAll('.game-container').forEach(container => {
                 container.classList.remove('active');
             });
-
-            // 3. Ocultar la pancarta de felicitación
             document.getElementById('rewardMessage').style.display = 'none'; 
-
-            // 4. Volver a la pantalla de ejercicios y avanzar a la siguiente pregunta
             showScreen('exerciseScreen');
             answeredCurrentQuestion = true; 
             nextQuestion(); 
         }
 
-        // ===================================================================
-        // 6. FUNCIONES DE EJERCICIO Y GAMIFICACIÓN
-        // ===================================================================
-
+        // --- Funciones de Ejercicio y Gamificación ---
         function startExercises() {
             const subject = document.getElementById('subjectChoose').value;
             const evaluation = document.getElementById('evaluationChoose').value;
             const topic = document.getElementById('topicChoose').value;
-
             if (!subject || !evaluation || !topic) {
                 showCustomMessage('Selecciona asignatura, evaluación y tema', 'error');
                 return;
             }
-
             const original = curriculum[subject]["1ºESO"][evaluation][topic];
-            // Lógica para mezclar y limitar preguntas
             const shuffled = [...original];
             for (let i = shuffled.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
             }
-
-            const maxQuestions = 100; // Límite máximo para la sesión
+            const maxQuestions = 100;
             currentExercises = shuffled.slice(0, Math.min(original.length, maxQuestions));
-
             currentQ = 0;
             completedExercises = [];
             answeredCurrentQuestion = false;
-
             showScreen('exerciseScreen');
             document.getElementById('subjectTopic').innerText = `${subject} - ${topic}`;
             document.getElementById('totalQuestions').innerText = currentExercises.length;
-            
             updatePoints();
             updateLevel();
             updateMedals();
             loadQuestion();
         }
-
         function loadQuestion() {
             answeredCurrentQuestion = false;
             if (currentQ >= currentExercises.length) {
                 return goToReview(); 
             }
-
             const q = currentExercises[currentQ];
             document.getElementById('questionNumber').innerText = currentQ + 1;
             document.getElementById('questionText').innerText = q.q;
-
             const btns = document.querySelectorAll('.options button');
-            // Mezclar opciones
             const optionIndexes = [0, 1, 2, 3].sort(() => Math.random() - 0.5); 
-            
             btns.forEach((btn, i) => {
                 const originalIndex = optionIndexes[i];
                 btn.innerText = q.options[originalIndex];
-                btn.setAttribute('data-original-index', originalIndex); // Guardamos el índice original
+                btn.setAttribute('data-original-index', originalIndex); 
                 btn.className = '';
                 btn.disabled = false; 
             });
         }
-
         function handleOptionClick(event) {
             if (event.target.tagName !== 'BUTTON') return;
             checkAnswer(event.target);
         }
-
         function checkAnswer(btn) {
             if (answeredCurrentQuestion) return; 
-
             const q = currentExercises[currentQ];
             const originalIndex = parseInt(btn.getAttribute('data-original-index'));
             const correctOriginalIndex = q.correct;
-
             answeredCurrentQuestion = true; 
-            
             document.querySelectorAll('.options button').forEach(b => b.disabled = true);
-
             if (originalIndex === correctOriginalIndex) {
                 btn.classList.add('correct');
                 points++; 
                 completedExercises.push(q.q);
-                // Si la respuesta es correcta, buscamos el botón original correcto y lo marcamos
             } else {
                 btn.classList.add('wrong');
-                // Si falló, buscamos el botón que contenía la respuesta correcta y lo marcamos también
                 document.querySelectorAll('.options button').forEach(b => {
                     if (parseInt(b.getAttribute('data-original-index')) === correctOriginalIndex) {
                         b.classList.add('correct');
                     }
                 });
             }
-            
             updatePoints(); 
             updateMedals();
-            updateLevel(); // Esta función llama a saveStudyData y startRewardGame si sube de nivel
+            updateLevel(); 
         }
-
         function nextQuestion() {
             if (!answeredCurrentQuestion) {
                 showCustomMessage('Debes responder la pregunta actual antes de avanzar.', 'info');
@@ -849,47 +757,37 @@
             currentQ++;
             loadQuestion();
         }
-
         function updatePoints() {
             document.getElementById('pointsDisplay').innerText = `Puntos: ${points}`;
             const progress = Math.min((points % 10) * 10, 100); 
             document.getElementById('progress').style.width = progress + '%';
         }
-
         function updateLevel() {
             if (currentExercises.length === 0 && points === 0) {
                 document.getElementById('levelDisplay').innerText = `Nivel: ${level}`;
                 return; 
             }
-
             const newLevel = Math.floor(points / 10) + 1; 
             if (newLevel > level) {
                 level = newLevel;
-                saveStudyData(); // Guardar el nuevo nivel inmediatamente
-                
-                // Mostrar la pancarta y comenzar el juego de recompensa
+                saveStudyData(); 
                 document.getElementById('rewardMessage').style.display = 'block'; 
                 document.getElementById('rewardLevel').innerText = level;
-                
-                setTimeout(startRewardGame, 1500); // Retraso para que vea el mensaje
-                
+                setTimeout(startRewardGame, 1500); 
                 if (level === 10) {
                     showCustomMessage("¡Has alcanzado el nivel 10! ¡Eres un campeón del estudio!", 'success');
                 }
             }
             document.getElementById('levelDisplay').innerText = `Nivel: ${level}`;
         }
-
         function updateMedals() {
             const container = document.getElementById('medals');
             container.innerHTML = '';
             const milestones = [5, 10, 20, 30, 40, 50];
             const completedCount = completedExercises.length;
-
             milestones.forEach(m => {
                 const medal = document.createElement('div');
                 medal.classList.add('medal');
-                
                 let icon = '🏅';
                 if (m === 5) icon = '🥉'; 
                 if (m === 10) icon = '🥈'; 
@@ -897,17 +795,14 @@
                 if (m === 30) icon = '🏆';
                 if (m === 40) icon = '🎖️';
                 if (m === 50) icon = '👑';
-
                 medal.textContent = icon;
                 if (completedCount >= m) medal.classList.add('active');
                 container.appendChild(medal);
             });
         }
-
         function updateReviewScreen() {
             document.getElementById('finalPoints').innerText = points;
             document.getElementById('finalLevel').innerText = level;
-
             const reviewDiv = document.getElementById('reviewQuestions');
             reviewDiv.innerHTML = '';
             if (completedExercises.length === 0) {
@@ -922,54 +817,32 @@
             });
         }
         
-        // ===================================================================
-        // 7. FUNCIONES DE PREMIO (JUEGOS PLACEHOLDERS)
-        // ===================================================================
-
-        // Función auxiliar para mostrar el contenedor de juego
+        // --- Funciones de Premio (Juegos) ---
         function showGameContainer(containerId, iframeId, file) {
              document.querySelectorAll('.game-container').forEach(container => {
                  container.classList.remove('active');
              });
              document.getElementById(containerId).classList.add('active');
-             // Cargar el juego en el iframe (Usamos un placeholder por ahora)
              document.getElementById(iframeId).src = `https://placehold.co/600x400/28a745/white?text=${file} Cargar Juego`;
         }
-
         function startRewardGame() {
             showScreen('gameScreen');
-
-            // Oculta la pancarta de felicitación (para que solo se muestre una vez)
             document.getElementById('rewardMessage').style.display = 'block';
-            
-            // Lógica para seleccionar un juego aleatorio
             const gameIndex = Math.floor(Math.random() * availableGames.length);
             const selectedGame = availableGames[gameIndex];
-
-            // Ya no necesitamos window[selectedGame.func] si usamos showGameContainer
-            // Simplemente mostramos el placeholder para el juego seleccionado
             showGameContainer(selectedGame.container, selectedGame.iframe, selectedGame.name);
         }
-
-        // Placeholders para las funciones de juego (obligatorio para evitar errores)
         availableGames.forEach(game => {
             window[game.func] = () => {
                  showGameContainer(game.container, game.iframe, game.name);
             };
         });
 
-        // ===================================================================
-        // 8. FUNCIONES GESTOR DE TAREAS (Todoist-like)
-        // ===================================================================
-
-        // Carga tareas desde Firestore (Listener en tiempo real)
+        // --- Funciones Gestor de Tareas ---
         function loadTasks() {
             if (!window.isAuthReady || !window.userId) return;
-            
             const tasksCol = window.getTasksCollection();
-            // Ordenamos por fecha límite y luego por completado (los no completados primero)
             const q = query(tasksCol, orderBy("completed", "asc"), orderBy("deadline", "asc"));
-            
             onSnapshot(q, (snapshot) => {
                 currentTasks = [];
                 snapshot.forEach(doc => {
@@ -987,24 +860,18 @@
                 document.getElementById('loadingTasks').innerText = 'Error al cargar tareas.';
             });
         }
-
-        // Renderiza las tareas en la UI
         function renderTasks() {
             const taskList = document.getElementById('taskList');
             taskList.innerHTML = ''; 
-            
             if (currentTasks.length === 0) {
                 taskList.innerHTML = '<p class="text-center text-gray-500">¡No hay tareas pendientes! Añade una para empezar.</p>';
                 return;
             }
-
             currentTasks.forEach(task => {
                 const taskDiv = document.createElement('div');
                 taskDiv.className = `task-item ${task.completed ? 'completed' : ''}`;
                 taskDiv.setAttribute('data-id', task.id);
-
                 const deadlineText = task.deadline ? new Date(task.deadline).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' }) : 'Sin fecha';
-                
                 taskDiv.innerHTML = `
                     <div class="task-details flex-grow">
                         <p class="font-medium">${task.text}</p>
@@ -1022,42 +889,31 @@
                 taskList.appendChild(taskDiv);
             });
         }
-        
-        // Función para mostrar confirmación de borrado
         function showTaskDeleteConfirmation(taskId) {
-            // Reemplaza a window.confirm()
             showCustomMessage('¿Seguro que quieres eliminar esta tarea? Esto no se puede deshacer.', 'error');
-            // Modificamos el botón para que ejecute la eliminación si se presiona.
             const modalBtn = document.getElementById('customMessageModal').querySelector('.main-button');
             modalBtn.onclick = async () => {
                 await deleteTask(taskId);
                 hideCustomMessage();
             };
         }
-
-
-        // Añade una nueva tarea
         async function addTask() {
             if (!window.isAuthReady || !window.userId) {
                 showCustomMessage('Espera a que la sesión esté lista para añadir tareas.', 'info');
                 return;
             }
             const text = document.getElementById('newTaskText').value.trim();
-            const deadline = document.getElementById('newTaskDeadline').value; // Formato YYYY-MM-DD
-            
+            const deadline = document.getElementById('newTaskDeadline').value; 
             if (!text) {
                 showCustomMessage('El texto de la tarea no puede estar vacío.', 'error');
                 return;
             }
-            
             try {
                 const tasksCol = window.getTasksCollection();
                 await addDoc(tasksCol, {
                     text: text,
-                    // Guardamos la fecha límite como string (YYYY-MM-DD) para fácil ordenación
                     deadline: deadline, 
                     completed: false,
-                    // Guardamos la fecha de creación para un ordenamiento secundario si es necesario
                     createdAt: new Date().toISOString() 
                 });
                 document.getElementById('newTaskText').value = '';
@@ -1068,8 +924,6 @@
                 showCustomMessage('Error al añadir tarea.', 'error');
             }
         }
-
-        // Marca/Desmarca una tarea como completada
         async function toggleTaskCompletion(taskId, completedStatus) {
             if (!window.isAuthReady || !window.userId) return;
             try {
@@ -1080,11 +934,8 @@
                 showCustomMessage('Error al actualizar tarea.', 'error');
             }
         }
-
-        // Elimina una tarea
         async function deleteTask(taskId) {
             if (!window.isAuthReady || !window.userId) return;
-
             try {
                 const taskRef = doc(window.getTasksCollection(), taskId);
                 await deleteDoc(taskRef);
@@ -1094,14 +945,7 @@
             }
         }
         
-        // ===================================================================
-        // 9. FUNCIONES PLANIFICADOR VISUAL (Tiimo-like)
-        // ===================================================================
-
-        // Inicializa la rutina al cargar la app (el listener inicial lo maneja el script module)
-        // document.addEventListener('DOMContentLoaded', loadRoutine); // Ya no es necesario aquí
-
-        // Carga la rutina desde Firestore
+        // --- Funciones Planificador Visual ---
         async function loadRoutineFromDB() {
             if (!window.isAuthReady || !window.userId) return;
             try {
@@ -1111,7 +955,7 @@
                 if (docSnap.exists()) {
                     currentRoutine = docSnap.data().schedule || [];
                 } else {
-                    currentRoutine = []; // Inicializar si no existe
+                    currentRoutine = []; 
                 }
                 renderRoutine();
             } catch (e) {
@@ -1119,33 +963,22 @@
                 document.getElementById('loadingRoutine').innerText = 'Error al cargar rutina.';
             }
         }
-
-        // Añade un bloque de actividad a la rutina local
         function addRoutineSlot() {
             const startTime = document.getElementById('routineStartTime').value;
             const activity = document.getElementById('routineActivity').value.trim();
             const duration = parseInt(document.getElementById('routineDuration').value);
-
             if (!startTime || !activity) {
                 showCustomMessage('Debes especificar la hora de inicio y la actividad.', 'error');
                 return;
             }
-
-            // Parsear hora para facilitar la ordenación
             const timeParts = startTime.split(':').map(Number);
             const sortKey = timeParts[0] * 60 + timeParts[1];
-
             currentRoutine.push({ startTime, activity, duration, sortKey });
-            // Ordenar por hora de inicio
             currentRoutine.sort((a, b) => a.sortKey - b.sortKey);
-            
             renderRoutine();
-            // Limpiar campos después de añadir
             document.getElementById('routineActivity').value = '';
             document.getElementById('routineDuration').value = '60';
         }
-
-        // Guarda la rutina en Firestore
         async function saveRoutine() {
             if (!window.isAuthReady || !window.userId) {
                 showCustomMessage('Espera a que la sesión esté lista para guardar la rutina.', 'info');
@@ -1153,7 +986,6 @@
             }
             try {
                 const docRef = window.getRoutineDataPath();
-                // Guardamos solo el array de horarios
                 await setDoc(docRef, { schedule: currentRoutine }); 
                 showCustomMessage('Rutina diaria guardada con éxito.', 'success');
             } catch (e) {
@@ -1161,30 +993,21 @@
                 showCustomMessage('Error al guardar rutina.', 'error');
             }
         }
-
-        // Renderiza la rutina visualmente (Tiimo-like)
         function renderRoutine() {
             const container = document.getElementById('scheduleContainer');
             container.innerHTML = '';
-
             if (currentRoutine.length === 0) {
                 container.innerHTML = '<p class="text-center text-gray-500">Añade bloques de actividad para crear tu horario visual.</p>';
                 return;
             }
-
             currentRoutine.forEach((slot, index) => {
                 const slotDiv = document.createElement('div');
                 slotDiv.className = 'schedule-slot';
-
-                // Calcular hora de finalización
                 const [hour, minute] = slot.startTime.split(':').map(Number);
                 const start = new Date(2000, 0, 1, hour, minute);
                 const end = new Date(start.getTime() + slot.duration * 60000);
-                
                 const formatTime = (date) => date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0');
-                
                 const timeText = `${slot.startTime} - ${formatTime(end)}`;
-
                 slotDiv.innerHTML = `
                     <div class="slot-time">${timeText}</div>
                     <div class="slot-activity">${slot.activity} (${slot.duration} min)</div>
@@ -1193,21 +1016,11 @@
                 container.appendChild(slotDiv);
             });
         }
-
-        // Elimina un bloque de la rutina local
         function removeRoutineSlot(index) {
             currentRoutine.splice(index, 1);
             renderRoutine();
             showCustomMessage('Bloque de rutina eliminado. No olvides hacer clic en "Guardar Rutina" si deseas guardar este cambio permanentemente.', 'info');
         }
-
-        // ===================================================================
-        // 10. INICIO
-        // ===================================================================
-
-        // El inicio de la aplicación está controlado por el script de Firebase
-        // que llama a loadStudyData() al finalizar la autenticación.
-
     </script>
 </body>
 </html>
