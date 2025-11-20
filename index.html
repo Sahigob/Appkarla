@@ -237,9 +237,9 @@
         }
     </style>
     <script>
-        // La configuración REAL de tu proyecto.
+        // La configuración REAL de tu proyecto. ¡DEBES REEMPLAZAR ESTO!
         window.__firebase_config = JSON.stringify({
-            "apiKey": "AIzaSyA2_vhF-3qbOEBB20B4t4fvAn8iBSNd6aE",
+            "apiKey": "AIzaSyA2_vhF-3qbOEBB20B4t4fvAn8iBSNd6aE", 
             "authDomain": "app-de-karla-b21a1.firebaseapp.com",
             "projectId": "app-de-karla-b21a1",
             "storageBucket": "app-de-karla-b21a1.firebasestorage.app",
@@ -256,6 +256,7 @@
     </script>
     
     <script type="module">
+        // Importaciones de Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, orderBy, deleteDoc, updateDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -270,16 +271,185 @@
         window.auth = getAuth(app);
         window.isAuthReady = false;
         window.userId = null;
-        
-        // 🚨 CORRECCIÓN CLAVE: Asignar las funciones a las variables globales CORRECTAS
-        window.loadStudyData = loadStudyData;
-        window.loadTasks = loadTasks;
-        window.loadRoutineFromDB = loadRoutineFromDB; // Asegura que loadRoutineFromDB sea global
 
         // --- DEFINICIÓN DE RUTAS (Collections) ---
         window.getStudyDataPath = () => doc(window.db, `artifacts/${appId}/users/${window.userId}/study_data`, 'current_stats');
         window.getTasksCollection = () => collection(window.db, `artifacts/${appId}/users/${window.userId}/tasks`);
         window.getRoutineDataPath = () => doc(window.db, `artifacts/${appId}/users/${window.userId}/routine_data`, 'daily_schedule');
+
+        // --- FUNCIONES DE PERSISTENCIA (Mantenidas dentro del módulo para acceder a las importaciones) ---
+
+        // Función de utilidad para mostrar mensajes (Necesaria aquí para usarla en las funciones de persistencia)
+        function showCustomMessage(message, type = 'error') {
+            const modal = document.getElementById('customMessageModal');
+            const messageText = document.getElementById('customMessageText');
+            const colorMap = {
+                error: '#dc3545',
+                info: '#007bff',
+                success: '#28a745'
+            };
+            messageText.innerText = message;
+            modal.querySelector('.modal-content').style.border = `2px solid ${colorMap[type] || colorMap.error}`;
+            modal.style.display = 'block';
+        }
+        
+        async function loadStudyData() {
+            if (!window.isAuthReady || !window.userId) return;
+            try {
+                const docRef = window.getStudyDataPath();
+                const docSnap = await getDoc(docRef); 
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    window.points = data.points || 0; 
+                    window.level = data.level || 1; 
+                    updatePoints();
+                    updateLevel(); 
+                    updateMedals(); 
+                }
+            } catch (e) {
+                console.error("Error al cargar datos de estudio:", e);
+            } finally {
+                document.getElementById('sessionUserId').innerText = window.userId || 'No disponible';
+                document.getElementById('loadingTasks').innerText = 'Añade tus tareas para empezar.';
+            }
+        }
+        
+        async function saveStudyData() {
+            if (!window.isAuthReady || !window.userId) return;
+            try {
+                const docRef = window.getStudyDataPath();
+                await setDoc(docRef, { 
+                    points: window.points, 
+                    level: window.level, 
+                    last_update: new Date().toISOString() 
+                }, { merge: true });
+            } catch (e) {
+                console.error("Error al guardar datos de estudio:", e);
+            }
+        }
+
+        async function loadTasks() {
+            if (!window.isAuthReady || !window.userId) return;
+            const tasksCol = window.getTasksCollection();
+            const q = query(tasksCol, orderBy("completed", "asc"), orderBy("deadline", "asc")); 
+            onSnapshot(q, (snapshot) => {
+                window.currentTasks = []; 
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    window.currentTasks.push({ 
+                        id: doc.id,
+                        text: data.text,
+                        deadline: data.deadline,
+                        completed: data.completed
+                    });
+                });
+                renderTasks();
+            }, (error) => {
+                console.error("Error al escuchar las tareas:", error);
+                document.getElementById('loadingTasks').innerText = 'Error al cargar tareas.';
+            });
+        }
+
+        async function addTask() {
+            if (!window.isAuthReady || !window.userId) {
+                showCustomMessage('Espera a que la sesión esté lista para añadir tareas.', 'info');
+                return;
+            }
+            const text = document.getElementById('newTaskText').value.trim();
+            const deadline = document.getElementById('newTaskDeadline').value; 
+            if (!text) {
+                showCustomMessage('El texto de la tarea no puede estar vacío.', 'error');
+                return;
+            }
+            try {
+                const tasksCol = window.getTasksCollection();
+                await addDoc(tasksCol, { 
+                    text: text,
+                    deadline: deadline, 
+                    completed: false,
+                    createdAt: new Date().toISOString() 
+                });
+                document.getElementById('newTaskText').value = '';
+                document.getElementById('newTaskDeadline').value = '';
+                showCustomMessage('Tarea añadida con éxito.', 'success');
+            } catch (e) {
+                console.error("Error al añadir tarea:", e);
+                showCustomMessage('Error al añadir tarea.', 'error');
+            }
+        }
+
+        async function toggleTaskCompletion(taskId, completedStatus) {
+            if (!window.isAuthReady || !window.userId) return;
+            try {
+                const taskRef = doc(window.getTasksCollection(), taskId);
+                await updateDoc(taskRef, { completed: completedStatus }); 
+            } catch (e) {
+                console.error("Error al actualizar tarea:", e);
+                showCustomMessage('Error al actualizar tarea.', 'error');
+            }
+        }
+
+        async function deleteTask(taskId) {
+            if (!window.isAuthReady || !window.userId) return;
+            try {
+                const taskRef = doc(window.getTasksCollection(), taskId);
+                await deleteDoc(taskRef); 
+            } catch (e) {
+                console.error("Error al eliminar tarea:", e);
+                showCustomMessage('Error al eliminar tarea.', 'error');
+            }
+        }
+
+        async function loadRoutineFromDB() {
+            if (!window.isAuthReady || !window.userId) return;
+            try {
+                const docRef = window.getRoutineDataPath();
+                const docSnap = await getDoc(docRef); 
+
+                if (docSnap.exists()) {
+                    window.currentRoutine = docSnap.data().schedule || []; 
+                } else {
+                    window.currentRoutine = []; 
+                }
+                renderRoutine();
+            } catch (e) {
+                console.error("Error al cargar rutina:", e);
+                document.getElementById('loadingRoutine').innerText = 'Error al cargar rutina.';
+            }
+        }
+        
+        async function saveRoutine() {
+            // 1. COMPROBACIÓN INICIAL: Si la sesión no está lista, avisa y espera.
+            if (!window.isAuthReady || !window.userId) {
+                showCustomMessage('Cargando sesión... Espera un momento antes de guardar.', 'info');
+                
+                // PAUSA CLAVE: Damos 1.5 segundos a Firebase para terminar la autenticación anónima
+                await new Promise(resolve => setTimeout(resolve, 1500)); 
+                
+                // 2. COMPROBACIÓN FINAL: Si sigue sin estar listo después de esperar, aborta.
+                if (!window.isAuthReady || !window.userId) {
+                     showCustomMessage('Sesión no lista. No se puede guardar. (Revisa tu conexión o la Autenticación Anónima en Firebase).', 'error');
+                     return;
+                }
+            }
+            
+            // 3. INTENTO DE GUARDAR
+            try {
+                const docRef = window.getRoutineDataPath();
+                await setDoc(docRef, { schedule: window.currentRoutine }); 
+                showCustomMessage('Rutina diaria guardada con éxito.', 'success');
+            } catch (e) {
+                console.error("Error al guardar rutina:", e);
+                
+                // 4. DIAGNÓSTICO DE ERROR (Especialmente 'permission-denied')
+                if (e.code === 'permission-denied') {
+                    showCustomMessage('Error de permiso: Revisa las Reglas de Seguridad de Firestore. Necesitan permitir escribir a usuarios autenticados.', 'error');
+                } else {
+                    showCustomMessage('Error al guardar rutina.', 'error');
+                }
+            }
+        }
 
         // --- FUNCIÓN PRINCIPAL DE AUTENTICACIÓN ---
         async function initializeAuthAndFirestore() {
@@ -295,46 +465,49 @@
                         window.userId = user.uid;
                         window.isAuthReady = true;
 
+                        // Llamadas de carga
                         loadStudyData(); 
                         loadTasks(); 
                         loadRoutineFromDB(); 
                         
-                        hideAllScreens();
-                        document.getElementById('subjectScreen').classList.add('active'); 
+                        // Estas funciones se definen globalmente más abajo en el script principal
+                        if (typeof hideAllScreens === 'function') hideAllScreens();
+                        if (document.getElementById('subjectScreen')) document.getElementById('subjectScreen').classList.add('active'); 
                         
                     } else {
                         window.userId = null;
                         window.isAuthReady = true; 
                         showCustomMessage('Sesión no iniciada. Usando modo anónimo. Tu progreso no se guardará.', 'info');
                         document.getElementById('sessionUserId').innerText = 'ANÓNIMO';
-                        hideAllScreens();
-                        document.getElementById('loginScreen').classList.add('active'); 
+                        if (typeof hideAllScreens === 'function') hideAllScreens();
+                        if (document.getElementById('loginScreen')) document.getElementById('loginScreen').classList.add('active'); 
                     }
                 });
             } catch (error) {
                 console.error("Error CRÍTICO en la autenticación:", error);
                 showCustomMessage('Error al iniciar sesión. ¡Verifica la API Key y la Autenticación Anónima!', 'error');
                 
-                hideAllScreens();
-                document.getElementById('subjectScreen').classList.add('active');
+                if (typeof hideAllScreens === 'function') hideAllScreens();
+                if (document.getElementById('subjectScreen')) document.getElementById('subjectScreen').classList.add('active');
             }
         }
 
+        // Hacemos las funciones necesarias accesibles globalmente (solo las que se llaman desde el HTML)
+        window.showCustomMessage = showCustomMessage;
+        window.deleteTask = deleteTask;
+        window.toggleTaskCompletion = toggleTaskCompletion;
+        window.loadRoutineFromDB = loadRoutineFromDB;
+        window.addTask = addTask;
+        window.saveRoutine = saveRoutine;
+        
+        // Inicializar la autenticación
         initializeAuthAndFirestore(); 
-
+        
+        // Listener de DOMContentLoaded se mantiene
         document.addEventListener('DOMContentLoaded', () => {
              document.getElementById('subjectChoose').addEventListener('change', populateEvaluations);
              document.getElementById('evaluationChoose').addEventListener('change', populateTopics);
         });
-
-        // Hacemos las funciones necesarias accesibles globalmente
-        window.showCustomMessage = showCustomMessage;
-        window.hideCustomMessage = hideCustomMessage;
-        window.showScreen = showScreen;
-        window.deleteTask = deleteTask;
-        window.toggleTaskCompletion = toggleTaskCompletion;
-        window.loadRoutineFromDB = loadRoutineFromDB;
-        window.hideAllScreens = hideAllScreens;
 
     </script>
 </head>
@@ -487,50 +660,873 @@
         // ===================================================================
         
         // --- Variables Globales ---
-        let currentExercises = [];
-        let currentQ = 0;
-        let points = 0;
-        let level = 1;
-        let completedExercises = []; 
-        let answeredCurrentQuestion = false;
-        let currentRoutine = [];
-        let currentTasks = [];
-        let animationFrameId = null; 
+        // Se inicializan en window para ser accesibles desde el módulo y fuera
+        window.currentExercises = [];
+        window.currentQ = 0;
+        window.points = 0;
+        window.level = 1;
+        window.completedExercises = []; 
+        window.answeredCurrentQuestion = false;
+        window.currentRoutine = [];
+        window.currentTasks = [];
+        window.animationFrameId = null; 
 
         // --- Estructura Curricular (Mismo contenido) ---
         const curriculum = {
              "Matemáticas": {
                 "1ºESO": {
                     "1ª evaluación": {
-                        "Números y Operaciones": [
+                         "Números y Operaciones": [
                             { q: "¿Cómo se lee 1.345.000?", options: ["Un millón trescientos cuarenta y cinco mil", "Trece millones", "Ciento treinta y cuatro mil", "Un billón"], correct: 0 },
-                            { q: "¿Qué es un número primo?", options: ["Un número que solo es divisible por 1 y por sí mismo", "Un número divisible por 2", "Un número mayor que 10", "Un número que termina en 5"], correct: 0 }
-                        ],
-                        "Geometría Básica": [
-                             { q: "¿Cuántos lados tiene un hexágono?", options: ["Cinco", "Seis", "Ocho", "Cuatro"], correct: 1 }
+                            { q: "Valor posicional del 7 en 1.705:", options: ["Unidades", "Decenas", "Centenas", "Unidades de Millar"], correct: 2 },
+                            { q: "¿Cuál es el resultado de 100 - 45?", options: ["65", "55", "45", "145"], correct: 1 },
+                            { q: "¿Cuál es el resultado de 12 × 5?", options: ["60", "50", "17", "70"], correct: 0 },
+                            { q: "¿Cuál es el resultado de 81 / 9?", options: ["7", "8", "9", "10"], correct: 2 },
+                            { q: "El valor posicional del 2 en 2.050.000 es...", options: ["Unidad de Millar", "Centena de Millar", "Unidad de millón", "Decena de Millar"], correct: 2 },
+                            { q: "¿Cuánto es 35 + 15 + 10?", options: ["50", "60", "70", "40"], correct: 1 },
+                            { q: "¿Cuánto es 10 × 10 × 10?", options: ["100", "30", "1.000", "100.000"], correct: 2 },
+                            { q: "¿Cuánto es 48 / 6?", options: ["7", "8", "6", "9"], correct: 1 },
+                            { q: "El número 9 es divisible por...", options: ["2", "4", "3", "5"], correct: 2 },
+                            { q: "El número 12 es múltiplo de...", options: ["5", "7", "4", "9"], correct: 2 },
+                            { q: "Un número primo es aquel que tiene solo dos divisores:", options: ["Él mismo y el 1", "El 2 y el 3", "Cualquier par de números", "Números impares"], correct: 0 },
+                            { q: "¿Cuál de estos es un número primo?", options: ["4", "9", "10", "7"], correct: 3 },
+                            { q: "¿Cuál de estos es un número compuesto?", options: ["3", "5", "8", "11"], correct: 2 },
+                            { q: "Múltiplos de 5, el siguiente a 20 es:", options: ["21", "25", "30", "15"], correct: 1 },
+                            { q: "Divisores de 10:", options: ["1, 2, 5, 10", "1, 5, 10", "1, 2, 4, 5", "5, 10"], correct: 0 },
+                            { q: "M.C.D de 4 y 6:", options: ["24", "12", "2", "4"], correct: 2 },
+                            { q: "m.c.m de 2 y 3:", options: ["1", "6", "3", "2"], correct: 1 },
+                            { q: "¿Cuánto es 5²?", options: ["10", "7", "25", "52"], correct: 2 },
+                            { q: "Raíz cuadrada de 9:", options: ["2", "3", "4", "81"], correct: 1 },
+                            { q: "La suma de los números 125 y 75 es:", options: ["100", "200", "50", "25"], correct: 1 },
+                            { q: "La diferencia entre 50 y 15 es:", options: ["65", "45", "35", "50"], correct: 2 },
+                            { q: "El producto de 9 y 8 es:", options: ["17", "72", "64", "81"], correct: 1 },
+                            { q: "El cociente de 40 entre 5 es:", options: ["6", "7", "8", "9"], correct: 2 },
+                            { q: "¿Cuál es el valor posicional de la primera cifra de la izquierda en 5.678?", options: ["Centenas", "Decenas de Millar", "Unidades de Millar", "Decenas"], correct: 2 },
+                            { q: "Para que un número sea divisible por 10 debe terminar en:", options: ["5", "Número par", "0", "Cualquier número"], correct: 2 },
+                            { q: "Un número es múltiplo de 2 si es:", options: ["Impar", "Par", "Termina en 5", "Primo"], correct: 1 },
+                            { q: "El número 15 es divisible por:", options: ["2", "4", "5", "6"], correct: 2 },
+                            { q: "Raíz cuadrada de 49:", options: ["6", "7", "8", "9"], correct: 1 },
+                            { q: "¿Cuánto es 3³?", options: ["9", "27", "6", "81"], correct: 1 },
+                            { q: "m.c.m de 4 y 5:", options: ["9", "10", "20", "40"], correct: 2 },
+                            { q: "M.C.D de 10 y 15:", options: ["5", "15", "10", "30"], correct: 0 },
+                            { q: "El número 2 es:", options: ["Compuesto", "Impar", "El único primo par", "Múltiplo de 4"], correct: 2 },
+                            { q: "El número 1 es:", options: ["Primo", "Compuesto", "Neutro", "Un divisor universal"], correct: 3 },
+                            { q: "Divisores de 7:", options: ["1, 7", "1, 2, 7", "7, 14", "1, 3, 7"], correct: 0 },
+                            { q: "¿Cuánto es 20 + 5 × 2 (Operaciones combinadas)?", options: ["50", "22", "30", "25"], correct: 2 },
+                            { q: "¿Cuánto es (10 - 2) × 3?", options: ["8", "24", "16", "26"], correct: 1 },
+                            { q: "Raíz cuadrada de 100:", options: ["100", "50", "10", "25"], correct: 2 },
+                            { q: "El resultado de 15 / 3 + 4 es:", options: ["7", "9", "5", "8"], correct: 1 },
+                            { q: "¿Cuál es el valor de 10⁴?", options: ["100", "10.000", "1.000", "40"], correct: 1 },                        
+
+                            { q: "Resultado de 15 + 8 * 2 - 5:", options: ["36", "26", "20", "41"], correct: 1 },
+                            { q: "Resultado de (10 - 4) * 3 + 2:", options: ["20", "22", "18", "32"], correct: 1 },
+                            { q: "Resultado de -10 + 5:", options: ["-5", "5", "-15", "15"], correct: 0 },
+                            { q: "Resultado de -3 * -4:", options: ["-12", "7", "12", "-7"], correct: 2 },
+                            { q: "Si la temperatura es de 5 grados C y baja 8 grados C, ¿qué temperatura hará?", options: ["-3°C", "3°C", "-13°C", "13°C"], correct: 0 },
+                            { q: "Resultado de 25 / 5 + 3 * 2:", options: ["16", "11", "20", "13"], correct: 1 },
+                            { q: "El número opuesto de -15 es:", options: ["-15", "0", "15", "-5"], correct: 2 },
+                            { q: "Resultado de (-2) * (5 - 8):", options: ["-6", "6", "10", "-10"], correct: 1 },
+                            { q: "Resultado de 10 - (-3) + 2:", options: ["5", "11", "15", "13",], correct: 3 },
+                            { q: "Resultado de 4 + 4 * 4 / 4:", options: ["8", "16", "4", "2"], correct: 0 },
+                            { q: "Resultado de (12 / 6) + (3 * 3):", options: ["10", "11", "12", "9"], correct: 1 },
+                            { q: "Resultado de -9 - 5:", options: ["4", "-4", "-14", "14"], correct: 2 },
+                            { q: "El valor absoluto de -20 es:", options: ["-20", "0", "10", "20"], correct: 3 },
+                            { q: "Resultado de 100 / 2 - 10:", options: ["40", "45", "90", "50"], correct: 0 },
+                            { q: "Resultado de (2 + 3) * (5 - 1):", options: ["9", "20", "10", "15"], correct: 1 },
+                            { q: "Resultado de (-1) elevado a 4:", options: ["1", "-1", "4", "-4"], correct: 0 },
+                            { q: "Resultado de -20 / 4:", options: ["5", "-5", "4", "-4"], correct: 1 },
+                            { q: "Número anterior a -8:", options: ["-9", "-7", "8", "9"], correct: 0 },
+                            { q: "Resultado de 7 * 3 + 2 - 1:", options: ["23", "22", "24", "20"], correct: 1 },
+                            { q: "Resultado de 15 - 5 * (4 - 2):", options: ["20", "10", "5", "0"], correct: 2 },                     
+                            { q: "Resultado de 2 elevado a 4:", options: ["8", "16", "4", "6"], correct: 1 },
+                            { q: "Resultado de la Raíz cuadrada de 49:", options: ["6", "7", "8", "5"], correct: 1 },
+                            { q: "Resultado de 10 elevado a 3:", options: ["100", "10", "1000", "30"], correct: 2 },
+                            { q: "Resultado de 5 elevado a 2:", options: ["10", "25", "50", "7"], correct: 1 },
+                            { q: "La expresión 3 * 3 * 3 * 3 es igual a:", options: ["3 elevado a 4", "4 elevado a 3", "12", "81"], correct: 0 },
+                            { q: "Resultado de la Raíz cuadrada de 81:", options: ["8", "9", "10", "7"], correct: 1 },
+                            { q: "Resultado de (5 elevado a 2) + 1:", options: ["26", "11", "51", "35"], correct: 0 },
+                            { q: "Resultado de (2 elevado a 3) - 3:", options: ["5", "3", "1", "6"], correct: 0 },
+                            { q: "El resultado de (10 elevado a 3) dividido por 100:", options: ["1000", "10", "100", "1"], correct: 1 },
+                            { q: "Resultado de (2 elevado a 2) * (3 elevado a 2):", options: ["13", "36", "18", "6"], correct: 1 },
+                            { q: "Resultado de 7 elevado a 1:", options: ["7", "1", "49", "0"], correct: 0 },
+                            { q: "Resultado de 6 elevado a 0:", options: ["6", "1", "0", "36"], correct: 1 },
+                            { q: "La Raíz cuadrada de qué número es 11:", options: ["22", "111", "121", "100"], correct: 2 },
+                            { q: "Resultado de 10 elevado a 5:", options: ["10000", "100000", "50", "1000000"], correct: 1 },
+                            { q: "Resultado de 3 elevado a 3:", options: ["9", "6", "27", "18"], correct: 2 },
+                            { q: "El número 64 es el resultado de la Raíz cuadrada de:", options: ["4096", "128", "8", "32"], correct: 0 },
+                            { q: "Resultado de (1 elevado a 99) + 1:", options: ["99", "100", "2", "1"], correct: 2 },
+                            { q: "Resultado de 4 elevado a 3:", options: ["12", "7", "16", "64"], correct: 3 },
+                            { q: "Resultado de 100 + (Raíz cuadrada de 25):", options: ["105", "125", "50", "15"], correct: 0 },
+                            { q: "Resultado de (2 elevado a 3) * 2:", options: ["8", "10", "16", "6"], correct: 2 },                        
+                            { q: "¿Cuál es un múltiplo de 6?", options: ["2", "15", "18", "25"], correct: 2 },
+                            { q: "¿Cuál es un divisor de 42?", options: ["8", "7", "5", "10"], correct: 1 },
+                            { q: "Mínimo Común Múltiplo (m.c.m) de 4 y 6:", options: ["24", "12", "6", "18"], correct: 1 },
+                            { q: "Máximo Común Divisor (M.C.D) de 10 y 15:", options: ["30", "5", "1", "150"], correct: 1 },
+                            { q: "¿Cuál de estos números es primo?", options: ["9", "21", "13", "10"], correct: 2 },
+                            { q: "Un número es divisible por 3 si la suma de sus cifras es divisible por:", options: ["6", "9", "3", "2"], correct: 2 },
+                            { q: "Múltiplo de 5, pero no de 10:", options: ["20", "15", "30", "50"], correct: 1 },
+                            { q: "Máximo Común Divisor (M.C.D) de 8 y 12:", options: ["4", "2", "8", "12"], correct: 0 },
+                            { q: "Mínimo Común Múltiplo (m.c.m) de 2 y 7:", options: ["9", "14", "2", "7"], correct: 1 },
+                            { q: "¿Cuál de estos números es compuesto?", options: ["17", "11", "29", "14"], correct: 3 },
+                            { q: "Divisores del número 18:", options: ["1, 2, 3, 6, 9, 18", "2, 3, 6, 9", "1, 18", "1, 2, 3, 4, 6, 9, 18"], correct: 0 },
+                            { q: "¿Cuál de estos números es divisible por 2 y por 5?", options: ["15", "12", "25", "30"], correct: 3 },
+                            { q: "Múltiplos de 4 entre 10 y 20:", options: ["12, 16", "14, 18", "10, 20", "12, 16, 20"], correct: 0 },
+                            { q: "M.C.D. de 7 y 11:", options: ["7", "11", "77", "1"], correct: 3 },
+                            { q: "m.c.m. de 3 y 5:", options: ["8", "15", "3", "5"], correct: 1 },
+                            { q: "El número 0 es múltiplo de:", options: ["Solo de sí mismo", "Todos los números", "Solo de 1", "Solo de números pares"], correct: 1 },
+                            { q: "Resultado de descomponer 24 en factores primos:", options: ["2^3 * 3", "2 * 3 * 4", "8 * 3", "2 * 2 * 6"], correct: 0 },
+                            { q: "¿Cuál de estos es un múltiplo común de 5 y 6?", options: ["11", "15", "20", "30"], correct: 3 },
+                            { q: "La descomposición de 12 es:", options: ["2 * 6", "3 * 4", "2 elevado a 2 * 3", "12 * 1"], correct: 2 },
+                            { q: "Un número es divisible por 9 si la suma de sus cifras es divisible por:", options: ["3", "6", "9", "8"], correct: 2 }
                         ]
+                                                                        
                     },
-                     "2ª evaluación": {
+                    "2ª evaluación": {
                         "Fracciones": [
-                             { q: "¿Cuál es la fracción irreducible de 4/8?", options: ["1/4", "1/2", "2/4", "3/8"], correct: 1 }
+                            // Bloque 1: Lectura, Representación y Comparación
+                            { q: "¿Cómo se lee 3/5?", options: ["Tres quinto", "Tres quintos", "Tres partido cinco", "Cinco tercios"], correct: 1 },
+                            { q: "¿Cómo se lee 1/2?", options: ["Un dos", "Un medio", "La mitad", "Dos uno"], correct: 1 },
+                            { q: "¿Cuál es el numerador en 4/7?", options: ["7", "4", "11", "3"], correct: 1 },
+                            { q: "¿Cuál es el denominador en 5/8?", options: ["5", "8", "13", "3"], correct: 1 },
+                            { q: "¿Cuál es mayor: 3/4 o 1/4?", options: ["1/4", "3/4", "Son iguales", "Falta dato"], correct: 1 },
+                            { q: "¿Cuál es menor: 2/5 o 4/5?", options: ["4/5", "2/5", "Son iguales", "Falta dato"], correct: 1 },
+                            { q: "¿Cómo se lee 7/10?", options: ["Siete décimo", "Siete décimos", "Diez séptimos", "Siete diez"], correct: 1 },
+                            { q: "¿Cuál es la fracción para un cuarto?", options: ["4/1", "1/4", "1/2", "2/4"], correct: 1 },
+                            { q: "¿Qué fracción es 0.5?", options: ["1/4", "1/3", "1/2", "1/5"], correct: 2 },
+                            { q: "¿Cuál es mayor: 1/2 o 1/3?", options: ["1/3", "1/2", "Son iguales", "Falta dato"], correct: 1 },
+                            { q: "¿Cuál es menor: 2/7 o 2/3?", options: ["2/3", "2/7", "Son iguales", "Falta dato"], correct: 1 },
+                            { q: "Fracción Propia (Num < Den):", options: ["5/3", "3/5", "5/5", "6/2"], correct: 1 },
+                            { q: "Fracción Impropia (Num > Den):", options: ["1/2", "3/4", "4/3", "2/5"], correct: 2 },
+                            { q: "¿Cómo se lee 2/3?", options: ["Dos tercios", "Tres medios", "Dos tres", "Dos terzos"], correct: 0 },
+                            { q: "¿Cuál es el numerador en 8/9?", options: ["9", "8", "17", "1"], correct: 1 },
+                            { q: "¿Cuál es mayor: 5/6 o 4/6?", options: ["4/6", "5/6", "Son iguales", "Falta dato"], correct: 1 },
+                            { q: "¿Cuál es menor: 3/10 o 7/10?", options: ["7/10", "3/10", "Son iguales", "Falta dato"], correct: 1 },
+                            { q: "El número 1 se representa como:", options: ["1/2", "3/4", "5/5", "2/1"], correct: 2 },
+                            { q: "Fracción con Denominador 6:", options: ["6/1", "1/6", "6", "1/2"], correct: 1 },
+                            { q: "¿Cuál es mayor: 5/7 o 3/7?", options: ["3/7", "5/7", "Son iguales", "Falta dato"], correct: 1 },
+                            { q: "¿Cuál es menor: 1/5 o 1/8?", options: ["1/5", "1/8", "Son iguales", "Falta dato"], correct: 1 },
+                            { q: "¿Cómo se lee 9/4?", options: ["Nueve cuartos", "Cuatro novenos", "Nueve cuatro", "Cuatro cuartos"], correct: 0 },
+                            { q: "¿Cuál es el denominador en 1/9?", options: ["1", "9", "0", "10"], correct: 1 },
+                            { q: "Fracción equivalente a 1/1 (un entero):", options: ["1/2", "2/3", "4/4", "3/1"], correct: 2 },
+                            { q: "¿Cuál es mayor: 5/12 o 7/12?", options: ["5/12", "7/12", "Son iguales", "Falta dato"], correct: 1 },
+                            { q: "¿Cuál es menor: 2/9 o 2/5?", options: ["2/5", "2/9", "Son iguales", "Falta dato"], correct: 1 },
+                            // Bloque 2: Fracciones Equivalentes y Simplificación
+                            { q: "Fracción equivalente a 1/2:", options: ["3/4", "2/4", "1/3", "4/6"], correct: 1 },
+                            { q: "Fracción equivalente a 1/3:", options: ["2/6", "1/6", "2/5", "3/4"], correct: 0 },
+                            { q: "Simplifica 5/10 (dividir por 5):", options: ["5/2", "1/5", "1/2", "1/1"], correct: 2 },
+                            { q: "Simplifica 6/9 (dividir por 3):", options: ["3/6", "2/3", "6/3", "1/9"], correct: 1 },
+                            { q: "Fracción equivalente a 3/3:", options: ["1/3", "3/1", "4/4", "6/9"], correct: 2 },
+                            { q: "Fracción equivalente a 2/5:", options: ["4/5", "4/10", "2/10", "5/2"], correct: 1 },
+                            { q: "Simplifica 8/12 (dividir por 4):", options: ["2/3", "4/6", "1/2", "8/4"], correct: 0 },
+                            { q: "Fracción equivalente a 1/4:", options: ["2/8", "1/8", "2/4", "4/16"], correct: 0 },
+                            { q: "Simplifica 4/6 (dividir por 2):", options: ["2/3", "1/3", "4/2", "3/2"], correct: 0 },
+                            { q: "Fracción equivalente a 3/1:", options: ["3/3", "1/3", "6/2", "3/6"], correct: 2 },
+                            { q: "Fracción equivalente a 4/8:", options: ["1/4", "1/2", "2/8", "3/4"], correct: 1 },
+                            { q: "Simplifica 10/10 (dividir por 10):", options: ["1/5", "1/1", "2/1", "10/1"], correct: 1 },
+                            { q: "Fracción equivalente a 2/2:", options: ["2/4", "1/1", "3/2", "2/1"], correct: 1 },
+                            { q: "Fracción equivalente a 5/6:", options: ["10/12", "5/12", "6/5", "10/6"], correct: 0 },
+                            { q: "Simplifica 12/15 (dividir por 3):", options: ["4/5", "3/5", "12/5", "5/4"], correct: 0 },
+                            { q: "Fracción equivalente a 7/7:", options: ["14/14", "7/1", "1/7", "7/14"], correct: 0 },
+                            { q: "Fracción equivalente a 1/5:", options: ["2/10", "1/10", "2/5", "5/10"], correct: 0 },
+                            { q: "Simplifica 20/30 (dividir por 10):", options: ["1/3", "2/3", "3/2", "1/2"], correct: 1 },
+                            { q: "Fracción equivalente a 3/2:", options: ["6/4", "3/4", "2/3", "4/6"], correct: 0 },
+                            { q: "Simplifica 14/21 (dividir por 7):", options: ["2/3", "3/4", "1/2", "7/3"], correct: 0 },
+                            { q: "Fracción equivalente a 1/6:", options: ["2/12", "1/12", "6/1", "2/6"], correct: 0 },
+                            { q: "Simplifica 9/12 (dividir por 3):", options: ["1/4", "3/4", "9/3", "4/3"], correct: 1 },
+                            { q: "Fracción equivalente a 4/5:", options: ["8/10", "4/10", "5/4", "10/8"], correct: 0 },
+                            { q: "Simplifica 15/20 (dividir por 5):", options: ["3/4", "4/3", "5/4", "15/5"], correct: 0 },
+                            { q: "Fracción equivalente a 1/10:", options: ["2/20", "1/20", "10/1", "2/10"], correct: 0 },
+                            { q: "Simplifica 2/8 (dividir por 2):", options: ["1/4", "1/2", "2/4", "2/1"], correct: 0 },
+                            // Bloque 3: Operaciones con Fracciones (Mismo denominador y multiplicación simple)
+                            { q: "¿Cuánto es 1/5 + 2/5?", options: ["3/10", "3/5", "1/5", "2/10"], correct: 1 },
+                            { q: "¿Cuánto es 4/7 - 1/7?", options: ["3/7", "5/7", "3/0", "4/1"], correct: 0 },
+                            { q: "¿Cuánto es 1/4 × 2?", options: ["2/8", "2/4", "1/8", "3/4"], correct: 1 },
+                            { q: "¿Cuánto es 2/3 + 1/3?", options: ["3/6", "3/3", "1/3", "2/3"], correct: 1 },
+                            { q: "¿Cuánto es 5/6 - 2/6?", options: ["3/0", "3/6", "7/6", "5/2"], correct: 1 },
+                            { q: "¿Cuánto es 3/5 × 2?", options: ["6/10", "6/5", "3/10", "5/6"], correct: 1 },
+                            { q: "¿Cuánto es 3/8 + 4/8?", options: ["7/16", "7/8", "1/8", "7/0"], correct: 1 },
+                            { q: "¿Cuánto es 9/10 - 4/10?", options: ["5/10", "13/10", "5/0", "9/4"], correct: 0 },
+                            { q: "¿Cuánto es 1/10 × 3?", options: ["3/30", "3/10", "1/30", "4/10"], correct: 1 },
+                            { q: "¿Cuánto es 1/6 + 2/6?", options: ["3/12", "3/6", "1/6", "2/6"], correct: 1 },
+                            { q: "¿Cuánto es 7/9 - 5/9?", options: ["2/0", "12/9", "2/9", "7/5"], correct: 2 },
+                            { q: "¿Cuánto es 2/7 × 2?", options: ["4/14", "4/7", "2/14", "7/4"], correct: 1 },
+                            { q: "¿Cuánto es 5/11 + 3/11?", options: ["8/22", "8/11", "2/11", "5/3"], correct: 1 },
+                            { q: "¿Cuánto es 6/8 - 1/8?", options: ["5/0", "5/8", "7/8", "6/1"], correct: 1 },
+                            { q: "¿Cuánto es 4/9 × 2?", options: ["8/18", "8/9", "4/18", "9/8"], correct: 1 },
+                            { q: "¿Cuánto es 1/2 + 1/2?", options: ["2/4", "2/2", "1/2", "0/2"], correct: 1 },
+                            { q: "¿Cuánto es 10/10 - 3/10?", options: ["7/20", "7/10", "13/10", "7/0"], correct: 1 },
+                            { q: "¿Cuánto es 5/12 × 2?", options: ["10/24", "10/12", "5/24", "12/10"], correct: 1 },
+                            { q: "¿Cuánto es 1/8 + 1/8?", options: ["2/16", "2/8", "1/8", "0/8"], correct: 1 },
+                            { q: "¿Cuánto es 4/5 - 1/5?", options: ["3/0", "3/5", "5/5", "4/1"], correct: 1 },
+                            { q: "¿Cuánto es 1/7 × 5?", options: ["5/35", "5/7", "1/35", "7/5"], correct: 1 },
+                            { q: "¿Cuánto es 2/9 + 4/9?", options: ["6/18", "6/9", "2/9", "4/9"], correct: 1 },                                                      
+                            { q: "Un tercio (1/3) de 90 es:", options: ["10", "30", "9", "60"], correct: 1 },
+                            { q: "Suma de 2/5 + 1/5:", options: ["3/10", "3/5", "1/5", "4/5"], correct: 1 },
+                            { q: "Multiplicación de 2/3 por 4/5:", options: ["6/8", "8/15", "2/15", "10/12"], correct: 1 },
+                            { q: "División de 1/2 entre 1/4:", options: ["1/8", "2", "1/2", "4"], correct: 1 },
+                            { q: "¿Qué fracción es equivalente a 1/2?", options: ["2/3", "4/8", "1/4", "3/5"], correct: 1 },
+                            { q: "Resta de 5/6 - 1/6:", options: ["4/12", "1", "4/6", "5/6"], correct: 2 },
+                            { q: "Fracción que representa 'la mitad de un tercio' (1/2 de 1/3):", options: ["1/6", "2/6", "1/5", "3/2"], correct: 0 },
+                            { q: "Pasa 0,7 a fracción (simplificada):", options: ["7/100", "7/10", "7/1", "1/7"], correct: 1 },
+                            { q: "¿Qué fracción es mayor, 2/5 o 3/5?", options: ["2/5", "3/5", "Son iguales", "Falta información"], correct: 1 },
+                            { q: "El número mixto 1 y 1/4 es igual a la fracción impropia:", options: ["5/4", "4/5", "1/4", "6/4"], correct: 0 },
+                            { q: "Resta de 1 - 3/4:", options: ["1/4", "2/4", "3/4", "0"], correct: 0 },
+                            { q: "¿Cuál es la fracción irreducible de 10/20?", options: ["5/10", "1/2", "2/4", "10/20"], correct: 1 },
+                            { q: "Multiplicación de 3 * (1/3):", options: ["1/3", "3", "1", "9"], correct: 2 },
+                            { q: "Pasa la fracción 4/2 a número natural:", options: ["4", "1", "2", "8"], correct: 2 },
+                            { q: "Suma de 1/2 + 1/4:", options: ["2/6", "3/4", "1/8", "3/2"], correct: 1 },
+                            { q: "División de 3/5 entre 2:", options: ["6/5", "3/10", "3/2", "5/3"], correct: 1 },
+                            { q: "¿Qué fracción es menor, 1/3 o 1/4?", options: ["1/3", "1/4", "Son iguales", "No se puede saber"], correct: 1 },
+                            { q: "Pasa la fracción impropia 7/3 a número mixto:", options: ["3 y 1/7", "2 y 1/3", "7 y 3", "2 y 2/3"], correct: 1 },
+                            { q: "Calcula 2/3 de 15:", options: ["30", "10", "5", "45"], correct: 1 },
+                            { q: "Resultado de (1/2) elevado a 2:", options: ["1/4", "1", "1/2", "2"], correct: 0 },                       
+                            { q: "Resultado de 500 - 15,5:", options: ["484,5", "499,5", "485,5", "494,5"], correct: 0 },
+                            { q: "Redondea 3,78 a la décima más cercana:", options: ["3,8", "3,7", "4,0", "3,79"], correct: 0 },
+                            { q: "Resultado de 2,5 * 4:", options: ["100", "10", "12,5", "9"], correct: 1 },
+                            { q: "Pasa 1/5 a número decimal:", options: ["0,5", "1,5", "0,2", "0,1"], correct: 2 },
+                            { q: "¿Cuál es el valor posicional del 9 en 12,95?", options: ["Unidades", "Décimas", "Centésimas", "Milésimas"], correct: 1 },
+                            { q: "Resultado de 1,2 + 3,45:", options: ["4,65", "4,55", "5,65", "4,57"], correct: 0 },
+                            { q: "Resultado de 10 / 0,5:", options: ["5", "20", "50", "0,5"], correct: 1 },
+                            { q: "Resultado de 0,1 * 0,1:", options: ["1", "0,1", "0,01", "0,11"], correct: 2 },
+                            { q: "Ordena de mayor a menor: 1,5; 1,05; 1,55:", options: ["1,55; 1,5; 1,05", "1,5; 1,55; 1,05", "1,05; 1,5; 1,55", "1,55; 1,05; 1,5"], correct: 0 },
+                            { q: "Aproxima 4,236 a la centésima más cercana:", options: ["4,23", "4,24", "4,2", "4,3"], correct: 1 },
+                            { q: "Resultado de 10 * 3,45:", options: ["345", "3,45", "34,5", "3450"], correct: 2 },
+                            { q: "Resultado de 5,5 / 100:", options: ["0,055", "55", "550", "0,55"], correct: 0 },
+                            { q: "Resta de 8 - 0,9:", options: ["7,1", "7,9", "8,9", "8,1"], correct: 0 },
+                            { q: "El número 0,001 se lee como:", options: ["Una décima", "Una centésima", "Un milésimo", "Un diezmilésimo"], correct: 2 },
+                            { q: "Resultado de (2,1 + 0,9) * 3:", options: ["9", "3", "6,3", "12"], correct: 0 },
+                            { q: "El precio de un producto es 12,50 y tiene un descuento de 2. ¿Cuánto cuesta?", options: ["14,50", "10,50", "10,00", "11,50"], correct: 1 },
+                            { q: "Resultado de 0,5 * 1000:", options: ["50", "500", "5000", "5"], correct: 1 },
+                            { q: "Resultado de 25,5 - 5,5:", options: ["20", "21", "20,5", "19,5"], correct: 0 },
+                            { q: "El resultado de la división 7 / 2 es:", options: ["3,2", "3,5", "4,2", "4,5"], correct: 1 },
+                            { q: "Resultado de 3,7 + 1,3 + 5:", options: ["10", "10,5", "9,7", "9,3"], correct: 0 },                    
+                            { q: "Si 2 kilos de manzanas cuestan 4 euros, ¿cuánto cuestan 5 kilos?", options: ["8 euros", "10 euros", "12 euros", "9 euros"], correct: 1 },
+                            { q: "El 50% de 80 es:", options: ["50", "40", "160", "8"], correct: 1 },
+                            { q: "La fracción 1/4 equivale al porcentaje:", options: ["40%", "25%", "14%", "50%"], correct: 1 },
+                            { q: "Si un artículo cuesta 100 euros y tiene un descuento del 10%, ¿cuánto pagas?", options: ["90 euros", "110 euros", "10 euros", "80 euros"], correct: 0 },
+                            { q: "Si 3 obreros tardan 4 días en pintar una casa, ¿cuánto tardarían 6 obreros? (Proporcionalidad inversa)", options: ["8 días", "2 días", "4 días", "12 días"], correct: 1 },
+                            { q: "El porcentaje 20% se expresa en decimal como:", options: ["0,2", "2,0", "0,02", "20,0"], correct: 0 },
+                            { q: "Si en una clase de 25 alumnos, 5 son rubios. ¿Qué porcentaje son rubios?", options: ["5%", "20%", "25%", "50%"], correct: 1 },
+                            { q: "Si 5 fotocopias cuestan 0,50 euros, ¿cuánto cuestan 15 fotocopias?", options: ["1,50 euros", "1,00 euros", "2,00 euros", "0,75 euros"], correct: 0 },
+                            { q: "¿Qué porcentaje de 20 es 5?", options: ["5%", "10%", "25%", "50%"], correct: 2 },
+                            { q: "La razón 10/20 simplificada es:", options: ["1/10", "1/2", "2/1", "1/20"], correct: 1 },
+                            { q: "Si 4,5 kg de fruta cuestan 9 euros, ¿cuánto cuesta 1 kg?", options: ["2 euros", "4,5 euros", "0,5 euros", "3 euros"], correct: 0 },
+                            { q: "El 1% de 200 es:", options: ["20", "1", "2", "0,2"], correct: 2 },
+                            { q: "Si A es a B como 3 es a 5, y B vale 15, ¿cuánto vale A?", options: ["9", "10", "3", "5"], correct: 0 },
+                            { q: "La expresión 'la cuarta parte' en porcentaje es:", options: ["4%", "40%", "25%", "75%"], correct: 2 },
+                            { q: "Un coche recorre 150 km en 2 horas. ¿Cuántos km recorrerá en 3 horas? (Velocidad constante)", options: ["200 km", "225 km", "180 km", "300 km"], correct: 1 },
+                            { q: "Si el 10% de un número es 5, ¿cuál es el número?", options: ["50", "100", "5", "25"], correct: 0 },
+                            { q: "El 25% de 400 es:", options: ["100", "50", "200", "25"], correct: 0 },
+                            { q: "Si una receta para 2 personas necesita 100g de harina, ¿cuántos gramos necesita para 6 personas?", options: ["200g", "300g", "400g", "600g"], correct: 1 },
+                            { q: "La mitad de la mitad es:", options: ["1/2", "1/4", "1/8", "1/1"], correct: 1 },
+                            { q: "Un aumento del 20% significa multiplicar el precio por:", options: ["0,2", "1,2", "0,8", "2,0"], correct: 1 }
+                        ]                      
+                        
+                    },
+                    "3ª evaluación": {
+                        "Estadística": [
+                            // Bloque 1: Definiciones y Reconocimiento
+                            { q: "El promedio de los datos es la...", options: ["Moda", "Mediana", "Media", "Frecuencia"], correct: 2 },
+                            { q: "El valor que más se repite es la...", options: ["Media", "Mediana", "Moda", "Promedio"], correct: 2 },
+                            { q: "El valor central de los datos es la...", options: ["Media", "Mediana", "Moda", "Frecuencia"], correct: 1 },
+                            { q: "¿Qué es el promedio?", options: ["El valor central", "La suma de datos/nº de datos", "El valor repetido", "El valor mayor"], correct: 1 },
+                            { q: "Para calcular la Mediana, primero hay que...", options: ["Sumar datos", "Dividir", "Ordenar datos", "Contar datos"], correct: 2 },
+                            { q: "La Media es sensible a valores...", options: ["Centrales", "Pequeños", "Extremos", "Repetidos"], correct: 2 },
+                            { q: "El valor 5 aparece 10 veces. Esto es la...", options: ["Media", "Mediana", "Moda", "Frecuencia"], correct: 3 },
+                            { q: "¿Qué medida se puede usar con datos NO numéricos (cualitativos)?", options: ["Media", "Mediana", "Moda", "Rango"], correct: 2 },
+                            { q: "En datos ordenados, la Mediana es la posición...", options: ["Inicial", "Final", "Central", "Mayor"], correct: 2 },
+                            { q: "La suma de datos entre el número de datos es la fórmula de la...", options: ["Moda", "Mediana", "Media", "Frecuencia"], correct: 2 },
+                            { q: "Un dato que aparece muchas veces está 'de'...", options: ["Mediana", "Promedio", "Moda", "Media"], correct: 2 },
+                            { q: "Si la lista de datos es par, la Mediana es la media de los dos valores...", options: ["Primeros", "Últimos", "Centrales", "Mayores"], correct: 2 },
+                            { q: "La Media representa el valor...", options: ["Máximo", "Típico/Promedio", "Mínimo", "Repetido"], correct: 1 },
+                            { q: "La Mediana divide la muestra en dos partes iguales: un 50% y un...", options: ["25%", "75%", "50%", "100%"], correct: 2 },
+                            { q: "Número de veces que se repite un dato (ni):", options: ["Mediana", "Moda", "Frecuencia absoluta", "Media"], correct: 2 },
+                            { q: "¿Qué medida representa el centro de gravedad de los datos?", options: ["Moda", "Mediana", "Media", "Rango"], correct: 2 },
+                            { q: "El dato con mayor Frecuencia Absoluta es la...", options: ["Media", "Mediana", "Moda", "Rango"], correct: 2 },
+                            { q: "Si los datos son: 1, 2, 3, 4, 5. ¿Necesitan ordenarse para la Media?", options: ["Sí", "No", "Solo si son impares", "Solo si son pares"], correct: 1 },
+                            { q: "Si los datos son: 1, 2, 3, 4, 5. ¿Necesitan ordenarse para la Mediana?", options: ["No", "Sí", "Solo si son impares", "Solo si son pares"], correct: 1 },
+                            { q: "El valor central se calcula después de...", options: ["Sumar", "Dividir", "Ordenar", "Multiplicar"], correct: 2 },
+                            { q: "La Moda puede tener más de un valor.", options: ["Falso", "Verdadero", "Solo si es impar", "Solo si es par"], correct: 1 },
+                            { q: "La Media siempre es uno de los datos de la lista.", options: ["Verdadero", "Falso", "A veces", "Nunca"], correct: 1 },
+                            { q: "¿Qué medida NO se ve afectada por un valor extremo (outlier)?", options: ["Media", "Mediana", "Moda", "Promedio"], correct: 1 },
+                            { q: "La suma de todos los datos dividida por la cantidad de datos es la...", options: ["Mediana", "Moda", "Media", "Frecuencia"], correct: 2 },
+                            { q: "Para calcular la Media, ¿se necesita ordenar los datos?", options: ["Sí", "No", "Solo a veces", "Depende"], correct: 1 },
+                            { q: "La medida más fácil de calcular es la...", options: ["Media", "Mediana", "Moda", "Rango"], correct: 2 },
+                            // Bloque 2: Cálculo de la Media
+                            { q: "Media de 2, 4, 6:", options: ["3", "4", "5", "6"], correct: 1 },
+                            { q: "Media de 1, 1, 4:", options: ["1", "2", "3", "4"], correct: 1 },
+                            { q: "Media de 10, 20:", options: ["10", "15", "20", "30"], correct: 1 },
+                            { q: "Media de 5, 5, 5:", options: ["4", "5", "6", "15"], correct: 1 },
+                            { q: "Media de 1, 2, 3, 4:", options: ["2", "2.5", "3", "3.5"], correct: 1 },
+                            { q: "Media de 1, 5, 6:", options: ["3", "4", "5", "6"], correct: 1 },
+                            { q: "Media de 8, 8, 8, 8:", options: ["7", "8", "9", "32"], correct: 1 },
+                            { q: "Media de 2, 3, 4, 5, 6:", options: ["3", "4", "5", "6"], correct: 1 },
+                            { q: "Media de 0, 10:", options: ["0", "5", "10", "20"], correct: 1 },
+                            { q: "Media de 3, 3, 6:", options: ["3", "4", "5", "6"], correct: 1 },
+                            { q: "Media de 7, 7, 7, 7, 7:", options: ["6", "7", "8", "35"], correct: 1 },
+                            { q: "Media de 1, 2, 6:", options: ["2", "3", "4", "5"], correct: 1 },
+                            { q: "Media de 10, 30, 50:", options: ["20", "30", "40", "50"], correct: 1 },
+                            { q: "Media de 1, 1, 1, 1, 1:", options: ["0", "1", "2", "3"], correct: 1 },
+                            { q: "Media de 4, 5, 6:", options: ["4", "5", "6", "5.5"], correct: 1 },
+                            { q: "Media de 2, 8:", options: ["4", "5", "6", "10"], correct: 1 },
+                            { q: "Media de 1, 3, 5, 7:", options: ["3", "4", "5", "4.5"], correct: 1 },
+                            { q: "Media de 2, 2, 2, 2:", options: ["1", "2", "3", "4"], correct: 1 },
+                            { q: "Media de 2, 4, 8:", options: ["4", "4.67", "5", "14"], correct: 1 },
+                            { q: "Media de 9, 9, 9:", options: ["8", "9", "10", "27"], correct: 1 },
+                            { q: "Media de 1, 1, 1, 5:", options: ["1", "2", "3", "4"], correct: 1 },
+                            { q: "Media de 6, 7, 8:", options: ["6.5", "7", "7.5", "21"], correct: 1 },
+                            { q: "Media de 10, 10, 20:", options: ["10", "15", "20", "40"], correct: 1 },
+                            { q: "Media de 5, 10, 15:", options: ["10", "15", "20", "30"], correct: 0 },
+                            { q: "Media de 10, 10:", options: ["5", "10", "15", "20"], correct: 1 },
+                            { q: "Media de 1, 2, 7:", options: ["3", "4", "5", "10"], correct: 1 },
+                            // Bloque 3: Cálculo de Moda y Mediana
+                            { q: "Moda de 1, 2, 2, 3, 4:", options: ["1", "2", "3", "4"], correct: 1 },
+                            { q: "Mediana de 1, 2, 3:", options: ["1", "2", "3", "1.5"], correct: 1 },
+                            { q: "Moda de 5, 5, 6, 7, 8:", options: ["6", "5", "7", "8"], correct: 1 },
+                            { q: "Mediana de 1, 3, 5, 7:", options: ["3", "4", "5", "6"], correct: 1 },
+                            { q: "Moda de 10, 10, 20, 30:", options: ["20", "10", "30", "No hay"], correct: 1 },
+                            { q: "Mediana de 2, 4, 6, 8, 10:", options: ["4", "6", "8", "10"], correct: 1 },
+                            { q: "Moda de 4, 5, 6, 7:", options: ["4", "6", "7", "No hay"], correct: 3 },
+                            { q: "Mediana de 1, 5, 10:", options: ["1", "5", "10", "6"], correct: 1 },
+                            { q: "Moda de 1, 2, 3, 3, 3:", options: ["1", "2", "3", "No hay"], correct: 2 },
+                            { q: "Mediana de 10, 10, 20, 30:", options: ["10", "15", "20", "25"], correct: 1 },
+                            { q: "Moda de 8, 8, 9, 10, 10:", options: ["8 y 10", "8", "10", "9"], correct: 0 },
+                            { q: "Mediana de 5, 10, 15, 20, 25:", options: ["10", "15", "20", "30"], correct: 1 },
+                            { q: "Moda de 1, 5, 5, 5, 6:", options: ["1", "5", "6", "No hay"], correct: 1 },
+                            { q: "Mediana de 2, 2, 4:", options: ["2", "3", "4", "2.5"], correct: 0 },
+                            { q: "Moda de 3, 4, 4, 5, 5:", options: ["3", "4 y 5", "5", "4"], correct: 1 },
+                            { q: "Mediana de 1, 2, 4, 5:", options: ["2", "3", "4", "5"], correct: 1 },
+                            { q: "Moda de 7, 7, 8, 9:", options: ["8", "7", "9", "No hay"], correct: 1 },
+                            { q: "Mediana de 6, 7, 8:", options: ["6", "7", "8", "6.5"], correct: 1 },
+                            { q: "Moda de 1, 1, 1, 5, 5:", options: ["1 y 5", "1", "5", "3"], correct: 1 },
+                            { q: "Mediana de 3, 3, 3, 4, 5:", options: ["3", "4", "5", "3.5"], correct: 0 },
+                            { q: "Moda de 0, 1, 1, 2, 2, 2:", options: ["1", "2", "0", "1 y 2"], correct: 1 },
+                            { q: "Mediana de 10, 12, 14:", options: ["10", "12", "14", "13"], correct: 1 },
+                            { q: "Moda de 1, 2, 3, 4, 5:", options: ["3", "1", "5", "No hay"], correct: 3 },
+                            { q: "Mediana de 8, 10, 12, 14:", options: ["10", "11", "12", "14"], correct: 1 },
+                            { q: "Moda de 9, 9, 9, 10:", options: ["9", "10", "9 y 10", "No hay"], correct: 0 },
+                            { q: "Mediana de 1, 5, 10, 20:", options: ["5", "7.5", "10", "15"], correct: 1 },                           
+                            { q: "Valor de 'x' en la ecuación x + 5 = 12:", options: ["17", "7", "60", "-7"], correct: 1 },
+                            { q: "Expresión que representa 'el doble de un número menos 3':", options: ["x^2 - 3", "3x - 2", "2x - 3", "2(x-3)"], correct: 2 },
+                            { q: "Valor de 'x' en la ecuación 3x = 15:", options: ["5", "12", "18", "45"], correct: 0 },
+                            { q: "El monomio equivalente a x + x + x es:", options: ["x elevado a 3", "3x", "x+3", "3"], correct: 1 },
+                            { q: "Si un número se multiplica por 4 y se le resta 2, el resultado es 10. ¿Cuál es el número?", options: ["2", "3", "4", "5"], correct: 1 },
+                            { q: "Valor de 'x' en la ecuación x / 2 = 6:", options: ["3", "12", "8", "4"], correct: 1 },
+                            { q: "Simplifica la expresión: 5a + 2a - a:", options: ["6a", "5a", "7a", "6"], correct: 0 },
+                            { q: "Expresión que representa 'un número al cuadrado':", options: ["2x", "x elevado a 2", "2+x", "x/2"], correct: 1 },
+                            { q: "Valor de 'x' en la ecuación 2x - 1 = 7:", options: ["3", "4", "8", "16"], correct: 1 },
+                            { q: "El valor numérico de la expresión 3x - 1 para x = 4 es:", options: ["11", "34", "13", "12"], correct: 0 },
+                            { q: "El perímetro de un cuadrado de lado 'L' es:", options: ["L elevado a 2", "4L", "L+4", "2L"], correct: 1 },
+                            { q: "Expresión que representa 'el anterior de un número':", options: ["n+1", "2n", "n-1", "n/2"], correct: 2 },
+                            { q: "Valor de 'x' en la ecuación x/3 + 1 = 4:", options: ["3", "12", "9", "6"], correct: 2 },
+                            { q: "Simplifica la expresión: 3x + y - x + 2y:", options: ["3xy", "2x + 3y", "4x + 3y", "5xy"], correct: 1 },
+                            { q: "Traducción de 'el triple de un número aumentado en 5':", options: ["3(x+5)", "3x + 5", "x + 35", "3+x+5"], correct: 1 },
+                            { q: "Valor de 'x' en la ecuación 10 - x = 3:", options: ["13", "7", "-7", "30"], correct: 1 },
+                            { q: "El grado del monomio 5x elevado a 2 y es:", options: ["2", "3", "5", "1"], correct: 1 },
+                            { q: "El doble de un número más su mitad es 10. ¿Cuál es el número?", options: ["5", "4", "6", "8"], correct: 1 },
+                            { q: "Valor de 'x' en 5 + x = 5:", options: ["10", "1", "0", "5"], correct: 2 },
+                            { q: "Expresión para el área de un triángulo de base 'b' y altura 'h':", options: ["b * h", "b+h/2", "b * h / 2", "2(b+h)"], correct: 2 },                        
+                            { q: "El área de un cuadrado de lado 5 cm es:", options: ["10 cm", "25 cm cuadrados", "20 cm cuadrados", "25 cm"], correct: 1 },
+                            { q: "El perímetro de un rectángulo de lados 4 cm y 6 cm es:", options: ["10 cm", "24 cm", "20 cm", "12 cm"], correct: 2 },
+                            { q: "La suma de los ángulos interiores de un triángulo es siempre:", options: ["90 grados", "180 grados", "360 grados", "100 grados"], correct: 1 },
+                            { q: "El volumen de un cubo de arista 3 metros es:", options: ["9 m cúbicos", "27 m cuadrados", "27 m cúbicos", "18 m cúbicos"], correct: 2 },
+                            { q: "Un ángulo agudo mide:", options: ["Más de 90 grados", "90 grados", "Menos de 90 grados", "180 grados"], correct: 2 },
+                            { q: "El área de un triángulo con base 4 y altura 5 es:", options: ["20", "10", "9", "40"], correct: 1 },
+                            { q: "La circunferencia es el perímetro del:", options: ["Cuadrado", "Círculo", "Triángulo", "Cubo"], correct: 1 },
+                            { q: "Si el radio de un círculo es 5, su diámetro es:", options: ["25", "10", "5", "2,5"], correct: 1 },
+                            { q: "Un polígono de 6 lados se llama:", options: ["Pentágono", "Heptágono", "Hexágono", "Octógono"], correct: 2 },
+                            { q: "Las líneas que nunca se cruzan se llaman:", options: ["Perpendiculares", "Oblicuas", "Paralelas", "Secantes"], correct: 2 },
+                            { q: "El área de un círculo de radio 1 (usando Pi = 3,14) es:", options: ["3,14", "6,28", "1", "2"], correct: 0 },
+                            { q: "¿Cuántos vértices tiene un cubo?", options: ["6", "8", "12", "4"], correct: 1 },
+                            { q: "El perímetro de un pentágono regular con lado 7 cm es:", options: ["35 cm", "49 cm", "28 cm", "30 cm"], correct: 0 },
+                            { q: "Un ángulo llano mide:", options: ["90 grados", "180 grados", "360 grados", "270 grados"], correct: 1 },
+                            { q: "La figura con 4 lados iguales y 4 ángulos rectos es un:", options: ["Rectángulo", "Rombo", "Trapecio", "Cuadrado"], correct: 3 },
+                            { q: "El volumen de un prisma rectangular con lados 2, 3 y 4 es:", options: ["9", "12", "24", "16"], correct: 2 },
+                            { q: "¿Cómo se llama la línea que divide un círculo en dos mitades?", options: ["Radio", "Tangente", "Cuerda", "Diámetro"], correct: 3 },
+                            { q: "El Teorema de Pitágoras se aplica a qué tipo de triángulo:", options: ["Equilátero", "Obtusángulo", "Rectángulo", "Isósceles"], correct: 2 },
+                            { q: "La unidad de medida para el área es:", options: ["Metro", "Metros cuadrados", "Metros cúbicos", "Centímetro"], correct: 1 },
+                            { q: "Un ángulo obtuso mide:", options: ["Menos de 90 grados", "90 grados", "Más de 90 y menos de 180 grados", "180 grados"], correct: 2 },                        
+                            { q: "En un conjunto de datos, el valor que aparece con más frecuencia es la:", options: ["Media", "Mediana", "Moda", "Rango"], correct: 2 },
+                            { q: "La media (promedio) de los números 2, 4, y 6 es:", options: ["12", "4", "5", "6"], correct: 1 },
+                            { q: "En una bolsa con 5 bolas rojas y 5 azules, ¿cuál es la probabilidad de sacar una roja?", options: ["5/5", "1/5", "1/2", "1/10"], correct: 2 },
+                            { q: "En el conjunto de datos 1, 3, 5, 7, 9, ¿cuál es la mediana?", options: ["1", "5", "7", "9"], correct: 1 },
+                            { q: "¿Qué nombre recibe el resultado de un experimento aleatorio (ej. lanzar un dado)?", options: ["Espacio muestral", "Suceso", "Rango", "Frecuencia"], correct: 1 },
+                            { q: "Si lanzas un dado, ¿cuál es la probabilidad de sacar un 7?", options: ["1/6", "1/7", "0", "6/6"], correct: 2 },
+                            { q: "El rango de los datos 10, 5, 20 es (valor máximo menos valor mínimo):", options: ["10", "15", "5", "20"], correct: 1 },
+                            { q: "La suma de todas las frecuencias relativas debe ser:", options: ["0", "1", "10", "100"], correct: 1 },
+                            { q: "Si lanzas una moneda 10 veces y sale cara 7 veces, la frecuencia absoluta de 'cara' es:", options: ["10", "3", "7", "7/10"], correct: 2 },
+                            { q: "La representación gráfica con rectángulos pegados para datos continuos se llama:", options: ["Diagrama de barras", "Gráfico de sectores", "Histograma", "Pictograma"], correct: 2 },
+                            { q: "En una baraja de 40 cartas, ¿cuál es la probabilidad de sacar un as?", options: ["1/40", "1/10", "4/40", "1/20"], correct: 1 },
+                            { q: "La media de las estaturas 150 cm, 160 cm, y 170 cm es:", options: ["165 cm", "155 cm", "160 cm", "170 cm"], correct: 2 },
+                            { q: "¿Cuál es el suceso seguro al lanzar un dado de 6 caras?", options: ["Sacar un 6", "Sacar un número par", "Sacar menos de 7", "Sacar más de 6"], correct: 2 },
+                            { q: "En los datos 2, 2, 3, 4, 5, ¿cuál es la moda?", options: ["3", "2", "4", "5"], correct: 1 },
+                            { q: "Si tienes 3 camisetas (roja, azul, verde) y 2 pantalones (negro, gris), ¿cuántas combinaciones puedes hacer?", options: ["5", "6", "12", "3"], correct: 1 },
+                            { q: "La mediana de los números 1, 2, 3, 4 (el promedio de los dos centrales) es:", options: ["2", "3", "2,5", "4"], correct: 2 },
+                            { q: "La probabilidad de un suceso imposible es:", options: ["1", "0", "0,5", "100%"], correct: 1 },
+                            { q: "¿Qué tipo de gráfico usarías para mostrar la evolución de la temperatura durante la semana?", options: ["Diagrama de barras", "Gráfico de líneas", "Histograma", "Gráfico de sectores"], correct: 1 },
+                            { q: "En una bolsa hay 10 caramelos, 3 de limón. ¿Qué probabilidad tienes de sacar uno de limón?", options: ["10/3", "3/10", "7/10", "1/10"], correct: 1 },
+                            { q: "Si la media de 4 notas es 6, ¿cuánto suman las 4 notas en total?", options: ["10", "24", "6", "18"], correct: 1 }
                         ]
-                    }
-                }
+            }
+        }
+    },
+    
+    // 🚀 NUEVA ASIGNATURA: LENGUA
+    "Lengua": {
+        "1ºESO": {
+            "1º Evaluación": {
+                "Tema 1: La Comunicación": [
+        { q: "¿Qué tipo de palabra es 'casa'?", options: ["Verbo", "Adjetivo", "Sustantivo", "Adverbio"], correct: 2 },
+                            { q: "¿Cuál es el plural de 'lápiz'?", options: ["Lápizs", "Lápices", "Lápizes", "Lápiz"], correct: 1 },
+                            { q: "¿Qué palabra está escrita correctamente?", options: ["Bicicleta", "Bicicreta", "Bicicleta", "Bicicreta"], correct: 0 },
+                            { q: "¿Qué tiempo verbal es 'comeré'?", options: ["Presente", "Pretérito", "Futuro", "Condicional"], correct: 2 },
+                            { q: "¿Qué palabra lleva tilde?", options: ["Camion", "Cancion", "Ratón", "Lapiz"], correct: 2 },
+                            { q: "¿Qué tipo de palabra es 'rápidamente'?", options: ["Adjetivo", "Sustantivo", "Verbo", "Adverbio"], correct: 3 },
+                            { q: "¿Cuál es el antónimo de 'alto'?", options: ["Grande", "Pequeño", "Bajo", "Fino"], correct: 2 },
+                            { q: "¿Qué palabra es un adjetivo?", options: ["Mesa", "Bonito", "Correr", "Rápido"], correct: 1 },
+                            { q: "¿Qué letra se usa en 'jirafa'?", options: ["G", "J", "H", "Y"], correct: 1 },
+                            { q: "¿Qué palabra lleva 'b'?", options: ["Vaca", "Beso", "Jugo", "Gato"], correct: 1 },
+                            { q: "¿Qué palabra lleva 'h'?", options: ["uevo", "acer", "humo", "ablar"], correct: 2 },
+                            { q: "¿Qué palabra es un verbo?", options: ["Correr", "Rápido", "Mesa", "Bonito"], correct: 0 },
+                            { q: "¿Qué palabra está mal escrita?", options: ["Zapato", "Zielo", "Zumo", "Zorro"], correct: 1 },
+                            { q: "¿Cuál es el sujeto en la oración: 'El gato duerme'?", options: ["El", "gato", "duerme", "El gato"], correct: 3 },
+                            { q: "¿Qué palabra es un sustantivo abstracto?", options: ["Amor", "Silla", "Perro", "Casa"], correct: 0 },
+                            { q: "¿Qué tiempo verbal es 'cantábamos'?", options: ["Presente", "Futuro", "Pretérito imperfecto", "Condicional"], correct: 2 },
+                            { q: "¿Qué palabra lleva tilde?", options: ["Camion", "Ratón", "Lapiz", "Cancion"], correct: 1 },
+                            { q: "¿Qué palabra es un sinónimo de 'feliz'?", options: ["Triste", "Contento", "Oscuro", "Feo"], correct: 1 },
+                            { q: "¿Qué tipo de oración es: '¿Dónde está el libro?'?", options: ["Exclamativa", "Interrogativa", "Enunciativa", "Imperativa"], correct: 1 },
+                            { q: "¿Qué palabra lleva 'g' suave?", options: ["Gente", "Gato", "Guitarra", "Goma"], correct: 3 },
+                            { q: "¿Qué palabra lleva 'v'?", options: ["Baca", "Vaca", "Beso", "Bajo"], correct: 1 },
+                            { q: "¿Qué palabra lleva tilde?", options: ["Árbol", "Arbol", "Arból", "Arvol"], correct: 0 },
+                            { q: "¿Qué palabra es un adverbio?", options: ["Mesa", "Bonito", "Rápidamente", "Correr"], correct: 2 },
+                            { q: "¿Qué palabra está escrita correctamente?", options: ["Jeneroso", "Generoso", "Henoroso", "Genoroso"], correct: 1 },
+                            { q: "¿Qué palabra lleva 'j'?", options: ["Jugo", "Goma", "Gente", "Guitarra"], correct: 0 },
+                            { q: "¿Qué palabra lleva 'h'?", options: ["Huevo", "Uevo", "Juevo", "Guevo"], correct: 0 },
+                            { q: "¿Qué palabra es un verbo en infinitivo?", options: ["Correr", "Corro", "Corría", "Corrí"], correct: 0 },
+                            { q: "¿Qué palabra es un sinónimo de 'bonito'?", options: ["Feo", "Hermoso", "Triste", "Oscuro"], correct: 1 },
+                            { q: "¿Qué palabra lleva tilde?", options: ["Lapiz", "Lápiz", "Lapíz", "Lápíz"], correct: 1 },
+                            { q: "¿Qué palabra es un sustantivo?", options: ["Mesa", "Rápido", "Correr", "Bonito"], correct: 0 },
+                            { q: "¿Qué palabra lleva tilde?", options: ["Telefono", "Teléfono", "Telefonó", "Telefonó"], correct: 1 },
+                            { q: "¿Qué palabra está escrita correctamente?", options: ["Jeneral", "General", "Generral", "Genaral"], correct: 1 },
+                            { q: "¿Qué palabra lleva 'v'?", options: ["Beso", "Vaso", "Bajo", "Baca"], correct: 1 },
+                            { q: "¿Qué palabra lleva 'b'?", options: ["Vaca", "Beso", "Jugo", "Gato"], correct: 1 },
+                            { q: "¿Qué palabra lleva 'h'?", options: ["Humo", "Umo", "Jumo", "Gumo"], correct: 0 },
+                            { q: "¿Qué palabra es un adjetivo?", options: ["Mesa", "Bonito", "Correr", "Rápido"], correct: 1 },
+                            { q: "¿Qué palabra es un sustantivo?", options: ["Perro", "Rápido", "Correr", "Bonito"], correct: 0 },
+                            { q: "¿Qué palabra es un verbo?", options: ["Correr", "Mesa", "Bonito", "Rápido"], correct: 0 },
+                            { q: "¿Qué palabra es un adverbio?", options: ["Rápidamente", "Mesa", "Bonito", "Correr"], correct: 0 },
+                            { q: "¿Qué palabra lleva tilde?", options: ["Cancion", "Ratón", "Lapiz", "Camion"], correct: 1 },
+                            { q: "¿Qué palabra está mal escrita?", options: ["Zapato", "Zielo", "Zumo", "Zorro"], correct: 1 },
+                            { q: "¿Qué palabra lleva 'g' suave?", options: ["Gente", "Goma", "Guitarra", "Gato"], correct: 1 },
+                            { q: "¿Qué palabra lleva 'j'?", options: ["Jugo", "Goma", "Gente", "Guitarra"], correct: 0 },
+                            { q: "¿Qué palabra lleva 'h'?", options: ["Huevo", "Uevo", "Juevo", "Guevo"], correct: 0 },
+                            { q: "¿Qué palabra es un verbo en infinitivo?", options: ["Correr", "Corro", "Corría", "Corrí"], correct: 0 },
+                            { q: "¿Qué palabra es un sinónimo de 'bonito'?", options: ["Feo", "Hermoso", "Triste", "Oscuro"], correct: 1 },
+                            { q: "¿Qué palabra lleva tilde?", options: ["Lapiz", "Lápiz", "Lapíz", "Lápíz"], correct: 1 },
+                            { q: "¿Qué palabra es un sustantivo abstracto?", options: ["Amor", "Silla", "Perro", "Casa"], correct: 0 },
+                            { q: "¿Qué tiempo verbal es 'vivíamos'?", options: ["Presente", "Futuro", "Pretérito imperfecto", "Condicional"], correct: 2 },
+                            { q: "¿Qué palabra lleva 'v'?", options: ["Baca", "Vaca", "Bajo", "Beso"], correct: 1 },
+                            { q: "¿Qué palabra lleva tilde?", options: ["Camion", "Ratón", "Lapiz", "Cancion"], correct: 1 },
+                            { q: "¿Qué palabra está escrita correctamente?", options: ["Hacer", "Acer", "Aser", "Hacerr"], correct: 0 },
+                            { q: "¿Qué palabra lleva 'g' suave?", options: ["Gente", "Goma", "Guitarra", "Gato"], correct: 1 },
+                            { q: "¿Qué palabra lleva 'j'?", options: ["Jugo", "Goma", "Gente", "Guitarra"], correct: 0 },
+                            { q: "¿Qué palabra lleva 'h'?", options: ["Humo", "Umo", "Jumo", "Gumo"], correct: 0 },
+                            { q: "¿Qué palabra es un adjetivo?", options: ["Mesa", "Bonito", "Correr", "Rápido"], correct: 1 },
+                            { q: "¿Qué palabra es un sustantivo?", options: ["Perro", "Rápido", "Correr", "Bonito"], correct: 0 },
+                            { q: "¿Qué palabra es un verbo?", options: ["Correr", "Mesa", "Bonito", "Rápido"], correct: 0 },
+                            { q: "¿Qué palabra es un adverbio?", options: ["Rápidamente", "Mesa", "Bonito", "Correr"], correct: 0 },
+                            { q: "¿Qué palabra lleva tilde?", options: ["Camión", "Camion", "Camíon", "Camíón"], correct: 0 },
+                            { q: "¿Qué palabra está mal escrita?", options: ["Zapato", "Zielo", "Zumo", "Zorro"], correct: 1 },
+                            { q: "¿Qué palabra lleva 'v'?", options: ["Beso", "Vaso", "Bajo", "Baca"], correct: 1 },
+                            { q: "¿Qué palabra lleva 'b'?", options: ["Vaca", "Beso", "Jugo", "Gato"], correct: 1 },
+                            { q: "¿Qué palabra lleva 'h'?", options: ["Huevo", "Uevo", "Juevo", "Guevo"], correct: 0 },
+                            { q: "¿Qué palabra es un verbo en infinitivo?", options: ["Correr", "Corro", "Corría", "Corrí"], correct: 0 },
+                            { q: "¿Qué palabra es un sinónimo de 'bonito'?", options: ["Feo", "Hermoso", "Triste", "Oscuro"], correct: 1 },
+                            { q: "¿Qué palabra lleva tilde?", options: ["Lapiz", "Lápiz", "Lapíz", "Lápíz"], correct: 1 },
+                            { q: "¿Qué palabra es un sustantivo abstracto?", options: ["Amor", "Silla", "Perro", "Casa"], correct: 0 },
+                            { q: "¿Qué tiempo verbal es 'vivíamos'?", options: ["Presente", "Futuro", "Pretérito imperfecto", "Condicional"], correct: 2 },
+                            { q: "¿Qué palabra lleva 'v'?", options: ["Baca", "Vaca", "Bajo", "Beso"], correct: 1 }
+
+                                            ]
+                                        },
+                           "2ª Evaluación": {
+                           "Sintaxis y Vocabulario": [
+                          { q: "¿Cuál es el predicado en la oración: 'El niño juega en el parque'?", options: ["El niño", "juega en el parque", "parque", "juega"], correct: 1 },
+                            { q: "¿Qué función tiene 'el perro' en la oración: 'El perro ladra fuerte'?", options: ["Sujeto", "Verbo", "Complemento", "Predicado"], correct: 0 },
+                            { q: "¿Qué tipo de palabra es 'hermoso'?", options: ["Verbo", "Adjetivo", "Sustantivo", "Adverbio"], correct: 1 },
+                            { q: "¿Cuál es un sinónimo de 'rápido'?", options: ["Lento", "Ligero", "Despacio", "Tardo"], correct: 1 },
+                            { q: "¿Cuál es un antónimo de 'fácil'?", options: ["Simple", "Complicado", "Rápido", "Claro"], correct: 1 },
+                            { q: "¿Qué palabra pertenece al campo semántico de 'frutas'?", options: ["Manzana", "Mesa", "Correr", "Rojo"], correct: 0 },
+                            { q: "¿Qué palabra es un conector?", options: ["Mesa", "Sin embargo", "Bonito", "Rápido"], correct: 1 },
+                            { q: "¿Qué tipo de oración es: 'María estudia y Pedro juega'?", options: ["Simple", "Compuesta", "Exclamativa", "Interrogativa"], correct: 1 },
+                            { q: "¿Qué palabra es un pronombre?", options: ["Yo", "Casa", "Bonito", "Rápido"], correct: 0 },
+                            { q: "¿Qué palabra es un determinante?", options: ["El", "Correr", "Mesa", "Bonito"], correct: 0 },
+                            { q: "¿Qué función tiene 'en el parque' en la oración: 'El niño juega en el parque'?", options: ["Sujeto", "Complemento circunstancial", "Verbo", "Adjetivo"], correct: 1 },
+                            { q: "¿Qué palabra es un verbo?", options: ["Correr", "Rápido", "Mesa", "Bonito"], correct: 0 },
+                            { q: "¿Qué palabra es un adverbio de lugar?", options: ["Aquí", "Rápido", "Bonito", "Nunca"], correct: 0 },
+                            { q: "¿Qué palabra es un adverbio de tiempo?", options: ["Ayer", "Rápido", "Bonito", "Mesa"], correct: 0 },
+                            { q: "¿Qué palabra es un adverbio de modo?", options: ["Bien", "Aquí", "Nunca", "Ayer"], correct: 0 },
+                            { q: "¿Qué palabra es un adjetivo calificativo?", options: ["Grande", "El", "Yo", "Mesa"], correct: 0 },
+                            { q: "¿Qué palabra es un sustantivo colectivo?", options: ["Manada", "Perro", "Casa", "Niño"], correct: 0 },
+                            { q: "¿Qué palabra es un sustantivo común?", options: ["Niño", "Madrid", "Juan", "España"], correct: 0 },
+                            { q: "¿Qué palabra es un sustantivo propio?", options: ["Perro", "Casa", "España", "Mesa"], correct: 2 },
+                            { q: "¿Qué palabra es un verbo en presente?", options: ["Corre", "Corrió", "Correrá", "Corría"], correct: 0 },
+                            { q: "¿Qué palabra es un verbo en futuro?", options: ["Corre", "Corrió", "Correrá", "Corría"], correct: 2 },
+                            { q: "¿Qué palabra es un verbo en pretérito imperfecto?", options: ["Corría", "Corre", "Correrá", "Corrió"], correct: 0 },
+                            { q: "¿Qué palabra es un verbo en pretérito perfecto?", options: ["Corrió", "Corría", "Corre", "Correrá"], correct: 0 },
+                            { q: "¿Qué palabra es un verbo en infinitivo?", options: ["Correr", "Corre", "Corrió", "Corría"], correct: 0 },
+                            { q: "¿Qué palabra es un complemento directo?", options: ["El libro", "Corre", "Rápido", "Ayer"], correct: 0 },
+                            { q: "¿Qué palabra es un complemento circunstancial de tiempo?", options: ["Ayer", "Rápido", "Aquí", "Bonito"], correct: 0 },
+                            { q: "¿Qué palabra es un complemento circunstancial de lugar?", options: ["Aquí", "Ayer", "Bien", "Nunca"], correct: 0 },
+                            { q: "¿Qué palabra es un complemento circunstancial de modo?", options: ["Bien", "Aquí", "Ayer", "Nunca"], correct: 0 },
+                            { q: "¿Qué palabra es un conector de causa?", options: ["Porque", "Y", "Pero", "Aunque"], correct: 0 },
+                            { q: "¿Qué palabra es un conector de oposición?", options: ["Aunque", "Porque", "Y", "Además"], correct: 0 },
+                            { q: "¿Qué función tiene 'el coche' en la oración: 'El coche está aparcado'?", options: ["Sujeto", "Verbo", "Complemento", "Predicado"], correct: 0 },
+                            { q: "¿Qué tipo de palabra es 'inteligente'?", options: ["Verbo", "Adjetivo", "Sustantivo", "Adverbio"], correct: 1 },
+                            { q: "¿Cuál es un sinónimo de 'triste'?", options: ["Contento", "Alegre", "Melancólico", "Feliz"], correct: 2 },
+                            { q: "¿Cuál es un antónimo de 'rápido'?", options: ["Ligero", "Lento", "Ágil", "Veloz"], correct: 1 },
+                            { q: "¿Qué palabra pertenece al campo semántico de 'ropa'?", options: ["Camisa", "Mesa", "Correr", "Rojo"], correct: 0 },
+                            { q: "¿Qué palabra es un conector de adición?", options: ["Además", "Pero", "Aunque", "Porque"], correct: 0 },
+                            { q: "¿Qué tipo de oración es: 'Pedro estudia y Ana lee'?", options: ["Simple", "Compuesta", "Exclamativa", "Imperativa"], correct: 1 },
+                            { q: "¿Qué palabra es un pronombre personal?", options: ["Yo", "Casa", "Bonito", "Rápido"], correct: 0 },
+                            { q: "¿Qué palabra es un determinante?", options: ["La", "Correr", "Mesa", "Bonito"], correct: 0 },
+                            { q: "¿Qué función tiene 'con alegría' en la oración: 'María canta con alegría'?", options: ["Sujeto", "Complemento circunstancial", "Verbo", "Adjetivo"], correct: 1 },
+                            { q: "¿Qué palabra es un adverbio de cantidad?", options: ["Mucho", "Aquí", "Nunca", "Bien"], correct: 0 },
+                            { q: "¿Qué palabra es un adverbio de afirmación?", options: ["Sí", "No", "Nunca", "Jamás"], correct: 0 },
+                            { q: "¿Qué palabra es un adjetivo calificativo?", options: ["Pequeño", "El", "Yo", "Mesa"], correct: 0 },
+                            { q: "¿Qué palabra es un sustantivo colectivo?", options: ["Ejército", "Soldado", "Casa", "Niño"], correct: 0 },
+                            { q: "¿Qué palabra es un sustantivo común?", options: ["Niña", "Madrid", "Juan", "España"], correct: 0 },
+                            { q: "¿Qué palabra es un sustantivo propio?", options: ["Perro", "Casa", "España", "Mesa"], correct: 2 },
+                            { q: "¿Qué palabra es un verbo en presente?", options: ["Lee", "Leyó", "Leerá", "Leía"], correct: 0 },
+                            { q: "¿Qué palabra es un verbo en futuro?", options: ["Lee", "Leyó", "Leerá", "Leía"], correct: 2 },
+                            { q: "¿Qué palabra es un verbo en pretérito imperfecto?", options: ["Leía", "Lee", "Leerá", "Leyó"], correct: 0 },
+                            { q: "¿Qué palabra es un complemento directo?", options: ["El libro", "Corre", "Rápido", "Ayer"], correct: 0 },
+                            { q: "¿Qué función tiene 'la profesora' en la oración: 'La profesora explica la lección'?", options: ["Sujeto", "Verbo", "Complemento", "Predicado"], correct: 0 },
+                            { q: "¿Qué tipo de palabra es 'divertido'?", options: ["Verbo", "Adjetivo", "Sustantivo", "Adverbio"], correct: 1 },
+                            { q: "¿Cuál es un sinónimo de 'grande'?", options: ["Pequeño", "Enorme", "Chico", "Angosto"], correct: 1 },
+                            { q: "¿Cuál es un antónimo de 'oscuro'?", options: ["Brillante", "Sombrío", "Negro", "Tenebroso"], correct: 0 },
+                            { q: "¿Qué palabra pertenece al campo semántico de 'vehículos'?", options: ["Coche", "Mesa", "Camisa", "Lápiz"], correct: 0 },
+                            { q: "¿Qué palabra es un conector de tiempo?", options: ["Después", "Pero", "Aunque", "Además"], correct: 0 },
+                            { q: "¿Qué tipo de oración es: '¿Qué hora es?'?", options: ["Simple", "Compuesta", "Interrogativa", "Exclamativa"], correct: 2 },
+                            { q: "¿Qué palabra es un pronombre personal?", options: ["Tú", "Casa", "Bonito", "Rápido"], correct: 0 },
+                            { q: "¿Qué palabra es un determinante?", options: ["Este", "Correr", "Mesa", "Bonito"], correct: 0 },
+                            { q: "¿Qué función tiene 'con cuidado' en la oración: 'Pedro camina con cuidado'?", options: ["Sujeto", "Complemento circunstancial", "Verbo", "Adjetivo"], correct: 1 },
+                            { q: "¿Qué palabra es un adverbio de negación?", options: ["No", "Sí", "Nunca", "Jamás"], correct: 0 },
+                            { q: "¿Qué palabra es un adjetivo calificativo?", options: ["Alto", "El", "Yo", "Mesa"], correct: 0 },
+                            { q: "¿Qué palabra es un sustantivo colectivo?", options: ["Rebaño", "Oveja", "Casa", "Niño"], correct: 0 },
+                            { q: "¿Qué palabra es un sustantivo común?", options: ["Niño", "Madrid", "Juan", "España"], correct: 0 },
+                            { q: "¿Qué palabra es un sustantivo propio?", options: ["Perro", "Casa", "España", "Mesa"], correct: 2 },
+                            { q: "¿Qué palabra es un verbo en presente?", options: ["Escribe", "Escribió", "Escribirá", "Escribía"], correct: 0 },
+                            { q: "¿Qué palabra es un verbo en futuro?", options: ["Escribe", "Escribió", "Escribirá", "Escribía"], correct: 2 },
+                            { q: "¿Qué palabra es un verbo en pretérito imperfecto?", options: ["Escribía", "Escribe", "Escribirá", "Escribió"], correct: 0 },
+                            { q: "¿Qué palabra es un complemento directo?", options: ["La carta", "Corre", "Rápido", "Ayer"], correct: 0 },
+                            { q: "¿Qué palabra es un complemento circunstancial de lugar?", options: ["Aquí", "Ayer", "Bien", "Nunca"], correct: 0 }
+
+                                            ]
+                                        },
+                                        "3ª Evaluación": {
+                                            "Comprensión y Textos": [
+                                                { q: "¿Qué tipo de texto cuenta una historia con personajes y acciones?", options: ["Descriptivo", "Narrativo", "Expositivo", "Argumentativo"], correct: 1 },
+                            { q: "¿Qué tipo de texto explica un tema con datos y hechos?", options: ["Narrativo", "Descriptivo", "Expositivo", "Dialogado"], correct: 2 },
+                            { q: "¿Qué tipo de texto describe cómo es algo o alguien?", options: ["Narrativo", "Descriptivo", "Expositivo", "Argumentativo"], correct: 1 },
+                            { q: "¿Qué tipo de texto intenta convencer al lector?", options: ["Narrativo", "Descriptivo", "Expositivo", "Argumentativo"], correct: 3 },
+                            { q: "¿Qué elemento narrativo indica dónde ocurre la historia?", options: ["Personaje", "Tiempo", "Lugar", "Acción"], correct: 2 },
+                            { q: "¿Qué elemento narrativo indica cuándo ocurre la historia?", options: ["Lugar", "Tiempo", "Personaje", "Narrador"], correct: 1 },
+                            { q: "¿Qué elemento narrativo realiza las acciones?", options: ["Narrador", "Personaje", "Lugar", "Tiempo"], correct: 1 },
+                            { q: "¿Qué tipo de narrador cuenta la historia desde fuera?", options: ["Narrador interno", "Narrador protagonista", "Narrador omnisciente", "Narrador testigo"], correct: 2 },
+                            { q: "¿Qué tipo de narrador participa en la historia?", options: ["Narrador omnisciente", "Narrador externo", "Narrador testigo", "Narrador protagonista"], correct: 3 },
+                            { q: "¿Qué parte de la narración presenta el conflicto?", options: ["Introducción", "Nudo", "Desenlace", "Epílogo"], correct: 1 },
+                            { q: "¿Qué parte de la narración resuelve el conflicto?", options: ["Introducción", "Nudo", "Desenlace", "Prólogo"], correct: 2 },
+                            { q: "¿Qué parte de la narración presenta a los personajes y el lugar?", options: ["Introducción", "Nudo", "Desenlace", "Clímax"], correct: 0 },
+                            { q: "¿Qué figura literaria compara dos elementos usando 'como'?", options: ["Metáfora", "Símil", "Hipérbole", "Personificación"], correct: 1 },
+                            { q: "¿Qué figura literaria da cualidades humanas a objetos?", options: ["Metáfora", "Símil", "Personificación", "Hipérbole"], correct: 2 },
+                            { q: "¿Qué figura literaria exagera una idea?", options: ["Metáfora", "Símil", "Personificación", "Hipérbole"], correct: 3 },
+                            { q: "¿Qué figura literaria sustituye una idea por otra parecida?", options: ["Metáfora", "Símil", "Personificación", "Hipérbole"], correct: 0 },
+                            { q: "¿Qué intención tiene un texto informativo?", options: ["Entretener", "Convencer", "Informar", "Describir"], correct: 2 },
+                            { q: "¿Qué intención tiene un cuento?", options: ["Informar", "Convencer", "Entretener", "Explicar"], correct: 2 },
+                            { q: "¿Qué intención tiene un anuncio publicitario?", options: ["Informar", "Convencer", "Entretener", "Narrar"], correct: 1 },
+                            { q: "¿Qué tipo de texto es una receta de cocina?", options: ["Narrativo", "Expositivo", "Instructivo", "Argumentativo"], correct: 2 },
+                            { q: "¿Qué tipo de texto es una noticia?", options: ["Narrativo", "Expositivo", "Descriptivo", "Informativo"], correct: 3 },
+                            { q: "¿Qué tipo de texto es una carta personal?", options: ["Narrativo", "Descriptivo", "Dialogado", "Epistolar"], correct: 3 },
+                            { q: "¿Qué tipo de texto es un diálogo entre personajes?", options: ["Narrativo", "Descriptivo", "Dialogado", "Expositivo"], correct: 2 },
+                            { q: "¿Qué tipo de texto es una biografía?", options: ["Narrativo", "Descriptivo", "Expositivo", "Argumentativo"], correct: 0 },
+                            { q: "¿Qué tipo de texto es un poema?", options: ["Narrativo", "Lírico", "Expositivo", "Argumentativo"], correct: 1 },
+                            { q: "¿Qué parte de la narración suele tener el clímax?", options: ["Introducción", "Nudo", "Desenlace", "Epílogo"], correct: 1 },
+                            { q: "¿Qué tipo de texto tiene versos y rima?", options: ["Narrativo", "Lírico", "Expositivo", "Argumentativo"], correct: 1 },
+                            { q: "¿Qué tipo de texto es un cuento tradicional?", options: ["Narrativo", "Expositivo", "Lírico", "Argumentativo"], correct: 0 },
+                            { q: "¿Qué tipo de texto es una entrevista?", options: ["Narrativo", "Dialogado", "Expositivo", "Argumentativo"], correct: 1 },
+                            { q: "¿Qué tipo de texto es una descripción de paisaje?", options: ["Narrativo", "Descriptivo", "Expositivo", "Argumentativo"], correct: 1 },
+                            { q: "¿Qué tipo de texto tiene como objetivo enseñar algo?", options: ["Narrativo", "Expositivo", "Lírico", "Argumentativo"], correct: 1 },
+                            { q: "¿Qué tipo de texto tiene como objetivo convencer?", options: ["Narrativo", "Descriptivo", "Argumentativo", "Expositivo"], correct: 2 },
+                            { q: "¿Qué tipo de texto tiene como objetivo emocionar?", options: ["Narrativo", "Lírico", "Expositivo", "Argumentativo"], correct: 1 },
+                            { q: "¿Qué parte de la narración presenta el conflicto?", options: ["Introducción", "Nudo", "Desenlace", "Epílogo"], correct: 1 },
+                            { q: "¿Qué parte de la narración resuelve el conflicto?", options: ["Introducción", "Nudo", "Desenlace", "Prólogo"], correct: 2 },
+                            { q: "¿Qué figura literaria compara sin usar 'como'?", options: ["Metáfora", "Símil", "Hipérbole", "Personificación"], correct: 0 },
+                            { q: "¿Qué figura literaria exagera una cualidad?", options: ["Metáfora", "Símil", "Hipérbole", "Personificación"], correct: 2 },
+                            { q: "¿Qué figura literaria da vida a objetos?", options: ["Metáfora", "Símil", "Hipérbole", "Personificación"], correct: 3 },
+                            { q: "¿Qué tipo de texto es una noticia?", options: ["Narrativo", "Informativo", "Lírico", "Argumentativo"], correct: 1 },
+                            { q: "¿Qué tipo de texto es una entrevista?", options: ["Narrativo", "Dialogado", "Expositivo", "Argumentativo"], correct: 1 },
+                            { q: "¿Qué tipo de texto es una descripción de persona?", options: ["Narrativo", "Descriptivo", "Expositivo", "Argumentativo"], correct: 1 },
+                            { q: "¿Qué tipo de texto es una fábula?", options: ["Narrativo", "Lírico", "Expositivo", "Argumentativo"], correct: 0 },
+                            { q: "¿Qué tipo de texto tiene como objetivo enseñar algo?", options: ["Narrativo", "Expositivo", "Lírico", "Argumentativo"], correct: 1 },
+                            { q: "¿Qué tipo de texto tiene como objetivo convencer?", options: ["Narrativo", "Descriptivo", "Argumentativo", "Expositivo"], correct: 2 },
+                            { q: "¿Qué tipo de texto tiene como objetivo emocionar?", options: ["Narrativo", "Lírico", "Expositivo", "Argumentativo"], correct: 1 },
+                            { q: "¿Qué parte de la narración presenta el conflicto?", options: ["Introducción", "Nudo", "Desenlace", "Epílogo"], correct: 1 },
+                            { q: "¿Qué parte de la narración resuelve el conflicto?", options: ["Introducción", "Nudo", "Desenlace", "Prólogo"], correct: 2 },
+                            { q: "¿Qué figura literaria compara sin usar 'como'?", options: ["Metáfora", "Símil", "Hipérbole", "Personificación"], correct: 0 },
+                            { q: "¿Qué figura literaria exagera una cualidad?", options: ["Metáfora", "Símil", "Hipérbole", "Personificación"], correct: 2 },
+                            { q: "¿Qué figura literaria da vida a objetos?", options: ["Metáfora", "Símil", "Hipérbole", "Personificación"], correct: 3 },
+                            { q: "¿Qué tipo de texto es una noticia?", options: ["Narrativo", "Informativo", "Lírico", "Argumentativo"], correct: 1 },
+                            { q: "¿Qué tipo de texto es una entrevista?", options: ["Narrativo", "Dialogado", "Expositivo", "Argumentativo"], correct: 1 },
+                            { q: "¿Qué tipo de texto es una descripción de persona?", options: ["Narrativo", "Descriptivo", "Expositivo", "Argumentativo"], correct: 1 },
+]
+            }
+        }
+    
+},
+'Sociales': {
+        '1ºESO': {
+            '1º Evaluación': {
+                'Geografía, la Tierra, el relieve, el clima, mapas, civilizaciones antiguas': [ 
+                   { q: "¿Qué planeta es el tercero desde el Sol?", options: ["Mercurio", "Venus", "Tierra", "Marte"], correct: 2 },
+  { q: "¿Cómo se llama la capa externa de la Tierra?", options: ["Núcleo", "Manto", "Corteza", "Atmósfera"], correct: 2 },
+  { q: "¿Qué nombre recibe la capa de aire que rodea la Tierra?", options: ["Hidrosfera", "Litosfera", "Atmósfera", "Biósfera"], correct: 2 },
+  { q: "¿Qué continente está al norte de África?", options: ["Asia", "Europa", "América", "Oceanía"], correct: 1 },
+  { q: "¿Cómo se llama la ciencia que estudia los mapas?", options: ["Geografía", "Cartografía", "Topografía", "Meteorología"], correct: 1 },
+  { q: "¿Qué instrumento mide la temperatura?", options: ["Barómetro", "Termómetro", "Anemómetro", "Pluviómetro"], correct: 1 },
+  { q: "¿Qué palabra usamos para hablar del estado del aire en un momento?", options: ["Clima", "Tiempo", "Estación", "Latitud"], correct: 1 },
+  { q: "¿Cómo se llama el movimiento de la Tierra alrededor del Sol?", options: ["Rotación", "Traslación", "Giro", "Revolución lunar"], correct: 1 },
+  { q: "¿Qué línea divide la Tierra en hemisferio norte y sur?", options: ["Meridiano de Greenwich", "Ecuador", "Trópico de Cáncer", "Paralelo 30"], correct: 1 },
+  { q: "¿Cómo se llama el punto donde nace un río?", options: ["Desembocadura", "Curso", "Nacedero", "Cauce"], correct: 2 },
+  { q: "¿Dónde desemboca un río?", options: ["En una montaña", "En otro río o en el mar", "En una isla", "En un glaciar"], correct: 1 },
+  { q: "¿Qué tipo de mapa muestra países y fronteras?", options: ["Físico", "Político", "Climático", "Histórico"], correct: 1 },
+  { q: "¿Qué tipo de mapa enseña montañas, ríos y mares?", options: ["Político", "Físico", "Económico", "Temático"], correct: 1 },
+  { q: "¿Cómo se llama una gran elevación del terreno?", options: ["Montaña", "Llanura", "Valle", "Meseta"], correct: 0 },
+  { q: "¿Qué es una cordillera?", options: ["Una fila de montañas", "Un valle ancho", "Un río caudaloso", "Una isla"], correct: 0 },
+  { q: "¿Qué continente está al este de Europa?", options: ["Oceanía", "Asia", "África", "América"], correct: 1 },
+  { q: "¿Qué civilización antigua se desarrolló junto al río Nilo?", options: ["Mesopotamia", "Egipto", "Grecia", "Roma"], correct: 1 },
+  { q: "¿Qué civilización antigua inventó la escritura cuneiforme?", options: ["Egipto", "Grecia", "Mesopotamia", "Roma"], correct: 2 },
+  { q: "¿Cómo se llama la forma de gobierno donde el rey tiene todo el poder?", options: ["Democracia", "República", "Monarquía absoluta", "Oligarquía"], correct: 2 },
+  { q: "¿Qué palabra describe la expansión de la cultura romana por Europa?", options: ["Feudalismo", "Romanización", "Industrialización", "Globalización"], correct: 1 },
+  { q: "¿Qué tipo de clima tiene España en general?", options: ["Polar", "Tropical", "Templado", "Desértico"], correct: 2 },
+  { q: "¿Qué instrumento mide la cantidad de lluvia?", options: ["Termómetro", "Pluviómetro", "Barómetro", "Higrómetro"], correct: 1 },
+  { q: "¿Cómo se llama la capa de la Tierra formada por agua?", options: ["Litosfera", "Hidrosfera", "Atmósfera", "Biósfera"], correct: 1 },
+  { q: "¿Qué es un delta?", options: ["Una montaña", "Una isla", "Una zona donde un río forma brazos antes del mar", "Una cordillera"], correct: 2 },
+  { q: "¿Qué nombre recibe el conjunto de condiciones del aire durante muchos años?", options: ["Tiempo", "Clima", "Latitud", "Altitud"], correct: 1 },
+{ q: "¿Qué línea imaginaria une los polos norte y sur?", options: ["Ecuador", "Meridiano de Greenwich", "Trópico de Cáncer", "Círculo Polar"], correct: 1 },
+  { q: "¿Qué río pasa por Egipto?", options: ["Tigris", "Nilo", "Éufrates", "Danubio"], correct: 1 },
+  { q: "¿Cuál es el continente más grande?", options: ["Asia", "Europa", "África", "América"], correct: 0 },
+  { q: "¿Qué océano está al oeste de Europa y África?", options: ["Atlántico", "Pacífico", "Índico", "Ártico"], correct: 0 },
+  { q: "¿Qué es una península?", options: ["Tierra rodeada de agua por todos lados", "Tierra rodeada de agua por tres lados", "Elevación de terreno", "Depresión del terreno"], correct: 1 },
+  { q: "¿Qué civilización antigua estaba entre los ríos Tigris y Éufrates?", options: ["Egipto", "Mesopotamia", "Roma", "Grecia"], correct: 1 },
+  { q: "¿Qué tipo de escritura usaban los egipcios?", options: ["Cuneiforme", "Jeroglífica", "Alfabeto latino", "Runa"], correct: 1 },
+  { q: "¿Qué río pasa por Roma?", options: ["Tíber", "Nilo", "Danubio", "Rin"], correct: 0 },
+  { q: "¿Qué ciudad fue centro de la Grecia clásica?", options: ["Atenas", "Roma", "Cartago", "Esparta"], correct: 0 },
+  { q: "¿Qué persona gobernaba en una monarquía?", options: ["Rey", "Senador", "Presidente", "Alcalde"], correct: 0 },
+  { q: "¿Qué grupo social tenía la mayoría de los esclavos en Roma?", options: ["Campesinos libres", "Nobles", "Prisioneros de guerra", "Comerciantes"], correct: 2 },
+  { q: "¿Qué estructura romana permitía transportar agua a la ciudad?", options: ["Acueducto", "Puente", "Templo", "Muralla"], correct: 0 },
+  { q: "¿Qué es una meseta?", options: ["Terreno plano elevado", "Valle estrecho", "Montaña alta", "Depresión en el mar"], correct: 0 },
+  { q: "¿Qué continente está al sur de Europa?", options: ["Asia", "África", "América", "Oceanía"], correct: 1 },
+  { q: "¿Qué instrumento mide la presión del aire?", options: ["Barómetro", "Higrómetro", "Termómetro", "Anemómetro"], correct: 0 },
+  { q: "¿Qué río pasa por Londres?", options: ["Seine", "Támesis", "Danubio", "Rin"], correct: 1 },
+  { q: "¿Qué desierto está en el norte de África?", options: ["Sahara", "Kalahari", "Gobi", "Atacama"], correct: 0 },
+  { q: "¿Qué parte de la Tierra es líquida y cubre la mayor superficie?", options: ["Hidrosfera", "Litosfera", "Atmósfera", "Biósfera"], correct: 0 },
+  { q: "¿Qué instrumento mide la velocidad del viento?", options: ["Anemómetro", "Barómetro", "Pluviómetro", "Termómetro"], correct: 0 },
+  { q: "¿Qué montañas separan España de Francia?", options: ["Pirineos", "Alpes", "Cárpatos", "Apeninos"], correct: 0 },
+  { q: "¿Qué civilización construyó el Coliseo?", options: ["Grecia", "Roma", "Egipto", "Mesopotamia"], correct: 1 },
+  { q: "¿Qué lengua se hablaba en la Antigua Roma?", options: ["Latín", "Griego", "Egipcio", "Hebreo"], correct: 0 },
+  { q: "¿Qué instrumento mide la humedad del aire?", options: ["Higrómetro", "Barómetro", "Pluviómetro", "Termómetro"], correct: 0 },
+  { q: "¿Qué océano baña la costa este de Estados Unidos?", options: ["Pacífico", "Atlántico", "Índico", "Ártico"], correct: 1 },
+  { q: "¿Qué fenómeno geográfico es un valle fluvial inundado por el mar?", options: ["Fiordo", "Delta", "Meseta", "Llanura"], correct: 0 },
+  { q: "¿Qué tipo de mapa muestra montañas, ríos y mares?", options: ["Político", "Físico", "Temático", "Histórico"], correct: 1 },
+{ q: "¿Qué continente tiene más países?", options: ["África", "Europa", "Asia", "América"], correct: 0 },
+  { q: "¿Qué océano está al este de África?", options: ["Atlántico", "Pacífico", "Índico", "Ártico"], correct: 2 },
+  { q: "¿Qué montaña es la más alta del mundo?", options: ["Kilimanjaro", "Everest", "Alpes", "Andes"], correct: 1 },
+  { q: "¿Qué civilización construyó las pirámides de Egipto?", options: ["Mesopotamia", "Egipto", "Grecia", "Roma"], correct: 1 },
+  { q: "¿Qué río pasa por Mesopotamia?", options: ["Nilo", "Tigris", "Danubio", "Rin"], correct: 1 },
+  { q: "¿Qué ciudad era el centro del Imperio Romano?", options: ["Atenas", "Roma", "Cartago", "Jerusalén"], correct: 1 },
+  { q: "¿Qué civilización usaba escritura cuneiforme?", options: ["Egipto", "Mesopotamia", "Grecia", "Roma"], correct: 1 },
+  { q: "¿Qué continente está al norte de América?", options: ["Europa", "Asia", "Ártico", "Oceanía"], correct: 2 },
+  { q: "¿Qué instrumento mide la dirección del viento?", options: ["Anemómetro", "Veleta", "Barómetro", "Higrómetro"], correct: 1 },
+  { q: "¿Qué línea divide la Tierra en hemisferio norte y sur?", options: ["Ecuador", "Meridiano de Greenwich", "Trópico de Capricornio", "Círculo Polar"], correct: 0 },
+  { q: "¿Qué es una península?", options: ["Tierra rodeada de agua por todos lados", "Tierra rodeada de agua por tres lados", "Montaña aislada", "Valle"], correct: 1 },
+  { q: "¿Qué civilización inventó el alfabeto griego?", options: ["Egipto", "Roma", "Grecia", "Mesopotamia"], correct: 2 },
+  { q: "¿Qué ciudad griega era conocida por su democracia?", options: ["Atenas", "Esparta", "Roma", "Cartago"], correct: 0 },
+  { q: "¿Qué monte es sagrado para los griegos?", options: ["Monte Olimpo", "Monte Kilimanjaro", "Mont Blanc", "Monte Fuji"], correct: 0 },
+  { q: "¿Qué río pasa por Egipto?", options: ["Nilo", "Tíber", "Danubio", "Rin"], correct: 0 },
+  { q: "¿Qué océano baña la costa oeste de América?", options: ["Atlántico", "Pacífico", "Índico", "Ártico"], correct: 1 },
+  { q: "¿Qué estructura romana se usaba para transportar agua?", options: ["Acueducto", "Puente", "Templo", "Muralla"], correct: 0 },
+  { q: "¿Qué grupo social tenía todos los derechos en Roma?", options: ["Patricios", "Plebe", "Esclavos", "Campesinos"], correct: 0 },
+  { q: "¿Qué mar está al sur de Europa?", options: ["Mar Adriático", "Mar Mediterráneo", "Mar Negro", "Mar del Norte"], correct: 1 },
+  { q: "¿Qué civilización construyó zigurats?", options: ["Mesopotamia", "Egipto", "Grecia", "Roma"], correct: 0 },
+  { q: "¿Qué instrumento mide la presión del aire?", options: ["Barómetro", "Higrómetro", "Termómetro", "Pluviómetro"], correct: 0 },
+  { q: "¿Qué civilización tenía dioses como Zeus y Atenea?", options: ["Egipto", "Mesopotamia", "Grecia", "Roma"], correct: 2 },
+  { q: "¿Qué continente está al sur de Europa?", options: ["Asia", "África", "América", "Oceanía"], correct: 1 },
+  { q: "¿Qué es una meseta?", options: ["Terreno plano elevado", "Valle", "Montaña", "Depresión"], correct: 0 },
+  { q: "¿Qué continente tiene la mayor diversidad de animales?", options: ["África", "Asia", "Europa", "Oceanía"], correct: 0 }
+
+]
+                
+                
             },
-            "Lengua": {
-                "1ºESO": {
-                    "1ª evaluación": {
-                        "Clases de palabras": [
-                            { q: "¿Qué clase de palabra es 'rápido'?", options: ["Sustantivo", "Verbo", "Adjetivo", "Adverbio"], correct: 2 }
-                        ]
-                    }
-                }
-            },
-            "Sociales": {
-                "1ºESO": {
-                    "1ª evaluación": {
-                        "La Tierra": [
-                            { q: "¿Quién realizó la primera vuelta al mundo por mar?", options: ["Cristóbal Colón", "Magallanes", "Vasco da Gama", "Hernán Cortés"], correct: 1 }
+            '2º Evaluación': {
+                'Edad Media, feudalismo, religiones, ciudades, economía y sociedad medieval': [
+                    { q: "¿En qué siglo comenzó la Edad Media?", options: ["Siglo V", "Siglo X", "Siglo XII", "Siglo XV"], correct: 0 },
+  { q: "¿Qué hecho marcó el inicio de la Edad Media?", options: ["Descubrimiento de América", "Caída del Imperio Romano de Occidente", "Invención de la imprenta", "Inicio del Renacimiento"], correct: 1 },
+  { q: "¿Qué grupo social dominaba las tierras en el feudalismo?", options: ["Campesinos", "Burgueses", "Nobles", "Esclavos"], correct: 2 },
+  { q: "¿Qué clase social trabajaba las tierras de los señores?", options: ["Caballeros", "Campesinos", "Monjes", "Mercaderes"], correct: 1 },
+  { q: "¿Qué institución tuvo gran poder en la Edad Media?", options: ["La Iglesia", "Los gremios", "Las universidades", "Los comerciantes"], correct: 0 },
+  { q: "¿Cómo se llama el sistema económico y social de la Edad Media?", options: ["Capitalismo", "Feudalismo", "Industrialización", "Mercantilismo"], correct: 1 },
+  { q: "¿Cómo se llamaban los territorios donde vivían los señores y los campesinos?", options: ["Reinos", "Feudos", "Municipios", "Provincias"], correct: 1 },
+  { q: "¿Qué era un castillo en la Edad Media?", options: ["Una casa de campesinos", "La residencia de los nobles", "Un mercado", "Un monasterio"], correct: 1 },
+  { q: "¿Qué grupo social se dedicaba a la oración y vivía en monasterios?", options: ["Nobles", "Mercaderes", "Monjes", "Caballeros"], correct: 2 },
+  { q: "¿Qué religión practicaban los musulmanes?", options: ["Cristianismo", "Judaísmo", "Islam", "Budismo"], correct: 2 },
+  { q: "¿Qué edificio religioso musulmán es típico?", options: ["Iglesia", "Sinagoga", "Mezquita", "Templo"], correct: 2 },
+  { q: "¿Cómo se llamaba la capital del Califato en Al-Ándalus?", options: ["Granada", "Toledo", "Córdoba", "Madrid"], correct: 2 },
+  { q: "¿Qué reinos cristianos se formaron en el norte de la Península tras la invasión musulmana?", options: ["Navarra, León y Castilla", "Roma y Atenas", "Francia y Portugal", "Toledo y Granada"], correct: 0 },
+  { q: "¿Cómo se llamaba el proceso por el que los reinos cristianos recuperaron territorios musulmanes?", options: ["Reconquista", "Colonización", "Romanización", "Exploración"], correct: 0 },
+  { q: "¿Qué nombre recibía el pacto entre un noble y su vasallo?", options: ["Tratado", "Juramento de fidelidad", "Ley feudal", "Alianza militar"], correct: 1 },
+  { q: "¿Qué grupo social surgió en las ciudades por el comercio?", options: ["Campesinos", "Burgueses", "Monjes", "Caballeros"], correct: 1 },
+  { q: "¿Qué se celebraba en las ferias medievales?", options: ["Batallas", "Intercambio de productos", "Ritos religiosos", "Competiciones deportivas"], correct: 1 },
+  { q: "¿Qué edificio era el centro de la vida religiosa cristiana?", options: ["Castillo", "Catedral", "Mercado", "Ayuntamiento"], correct: 1 },
+  { q: "¿Cómo se llamaban los trabajadores especializados agrupados por oficios?", options: ["Gremios", "Ejércitos", "Campesinos", "Monasterios"], correct: 0 },
+  { q: "¿Qué material se usaba mucho en el arte románico?", options: ["Vidrio", "Mármol", "Piedra", "Madera"], correct: 2 },
+  { q: "¿Qué característica tiene el arte gótico?", options: ["Muros gruesos y poca luz", "Ventanas grandes y arcos apuntados", "Pinturas rupestres", "Columnas egipcias"], correct: 1 },
+  { q: "¿Qué lengua hablaban los musulmanes en Al-Ándalus?", options: ["Latín", "Árabe", "Hebreo", "Griego"], correct: 1 },
+  { q: "¿Qué nombre recibe el conjunto de leyes o normas que regulaban la vida en un feudo?", options: ["Código civil", "Derecho feudal", "Fuero", "Pacto comercial"], correct: 2 },
+  { q: "¿Qué grupo social se encargaba de proteger a los nobles y campesinos?", options: ["Caballeros", "Monjes", "Mercaderes", "Burgueses"], correct: 0 },
+  { q: "¿Qué eran las Cruzadas?", options: ["Guerras entre reinos cristianos", "Guerras para recuperar Tierra Santa", "Ferias comerciales", "Exploraciones marítimas"], correct: 1 },
+{ q: "¿Qué periodo histórico viene después de la Antigüedad?", options: ["Edad Moderna", "Edad Contemporánea", "Edad Media", "Prehistoria"], correct: 2 },
+  { q: "¿Qué grupo social vivía en los castillos?", options: ["Nobles", "Campesinos", "Monjes", "Burgueses"], correct: 0 },
+  { q: "¿Quién trabajaba la tierra para los señores?", options: ["Campesinos", "Caballeros", "Mercaderes", "Monjes"], correct: 0 },
+  { q: "¿Qué institución tenía mucho poder en la Edad Media?", options: ["Iglesia", "Mercado", "Universidad", "Gremio"], correct: 0 },
+  { q: "¿Qué nombre recibe la organización económica y social medieval?", options: ["Capitalismo", "Feudalismo", "Monarquía", "República"], correct: 1 },
+  { q: "¿Cómo se llamaban las tierras de un señor feudal?", options: ["Reinos", "Feudos", "Condados", "Villas"], correct: 1 },
+  { q: "¿Qué grupo social rezaba en los monasterios?", options: ["Monjes", "Nobles", "Campesinos", "Caballeros"], correct: 0 },
+  { q: "¿Qué grupo social defendía los feudos y nobles?", options: ["Caballeros", "Campesinos", "Burgueses", "Monjes"], correct: 0 },
+  { q: "¿Qué religión predominaba en Europa medieval?", options: ["Cristianismo", "Islam", "Judaísmo", "Budismo"], correct: 0 },
+  { q: "¿Qué edificio era centro de la vida religiosa cristiana?", options: ["Catedral", "Mercado", "Castillo", "Ayuntamiento"], correct: 0 },
+  { q: "¿Qué eran los gremios?", options: ["Agrupación de artesanos", "Ejércitos", "Monasterios", "Feudos"], correct: 0 },
+  { q: "¿Qué grupo social empezó a enriquecerse con el comercio?", options: ["Burgueses", "Nobles", "Monjes", "Campesinos"], correct: 0 },
+  { q: "¿Qué era la feria medieval?", options: ["Un mercado temporal", "Un castillo", "Un monasterio", "Una ciudad"], correct: 0 },
+  { q: "¿Qué civilización invadió la Península antes de la Edad Media?", options: ["Romanos", "Musulmanes", "Griegos", "Vikingos"], correct: 0 },
+  { q: "¿Qué nombre recibe la recuperación de territorios por los reinos cristianos?", options: ["Reconquista", "Colonización", "Romanización", "Exploración"], correct: 0 },
+  { q: "¿Qué castillo servía de protección y residencia del noble?", options: ["Feudo", "Castillo", "Iglesia", "Ciudad"], correct: 1 },
+  { q: "¿Qué estilo artístico tiene arcos apuntados y grandes ventanas?", options: ["Románico", "Gótico", "Renacentista", "Barroco"], correct: 1 },
+  { q: "¿Qué estilo artístico tiene muros gruesos y poca luz?", options: ["Románico", "Gótico", "Renacentista", "Barroco"], correct: 0 },
+  { q: "¿Qué grupo social vivía en aldeas y trabajaba la tierra?", options: ["Campesinos", "Caballeros", "Burgueses", "Monjes"], correct: 0 },
+  { q: "¿Qué idioma hablaban los musulmanes en Al-Ándalus?", options: ["Árabe", "Latín", "Hebreo", "Griego"], correct: 0 },
+  { q: "¿Qué se usaba como moneda en los mercados medievales?", options: ["Oro y plata", "Dólares", "Euros", "Dinero de papel"], correct: 0 },
+  { q: "¿Qué función tenía el monasterio?", options: ["Oración y copia de libros", "Comercio", "Defensa militar", "Gobierno"], correct: 0 },
+  { q: "¿Qué grupo social estaba formado por mercaderes y artesanos en las ciudades?", options: ["Burgueses", "Nobles", "Monjes", "Campesinos"], correct: 0 },
+  { q: "¿Qué instrumento musical era común en la Edad Media?", options: ["Laúd", "Piano", "Guitarra eléctrica", "Violín moderno"], correct: 0 },
+  { q: "¿Qué construcción protegía a los habitantes en tiempos de guerra?", options: ["Muralla", "Catedral", "Monasterio", "Iglesia"], correct: 0 },
+{ q: "¿Qué periodo histórico viene después de la Antigüedad?", options: ["Edad Moderna", "Edad Media", "Edad Contemporánea", "Prehistoria"], correct: 1 },
+  { q: "¿Qué grupo social defendía el feudo?", options: ["Caballeros", "Campesinos", "Monjes", "Burgueses"], correct: 0 },
+  { q: "¿Quién cultivaba la tierra para los señores?", options: ["Campesinos", "Caballeros", "Burgueses", "Monjes"], correct: 0 },
+  { q: "¿Qué institución tenía gran poder en la Edad Media?", options: ["Iglesia", "Mercado", "Universidad", "Gremio"], correct: 0 },
+  { q: "¿Cómo se llama el sistema social de la Edad Media?", options: ["Capitalismo", "Feudalismo", "Monarquía", "República"], correct: 1 },
+  { q: "¿Cómo se llama la tierra de un señor feudal?", options: ["Reino", "Feudo", "Condado", "Villa"], correct: 1 },
+  { q: "¿Quién vivía en los monasterios?", options: ["Monjes", "Nobles", "Campesinos", "Caballeros"], correct: 0 },
+  { q: "¿Quién protegía a los nobles y al feudo?", options: ["Caballeros", "Campesinos", "Burgueses", "Monjes"], correct: 0 },
+  { q: "¿Qué religión predominaba en Europa medieval?", options: ["Cristianismo", "Islam", "Judaísmo", "Budismo"], correct: 0 },
+  { q: "¿Qué edificio era centro religioso?", options: ["Catedral", "Mercado", "Castillo", "Ayuntamiento"], correct: 0 },
+  { q: "¿Qué eran los gremios?", options: ["Agrupación de artesanos", "Ejércitos", "Monasterios", "Feudos"], correct: 0 },
+  { q: "¿Qué grupo social se enriqueció con el comercio?", options: ["Burgueses", "Nobles", "Monjes", "Campesinos"], correct: 0 },
+  { q: "¿Qué era la feria medieval?", options: ["Mercado temporal", "Castillo", "Monasterio", "Ciudad"], correct: 0 },
+  { q: "¿Qué civilización ocupó la Península antes de la Edad Media?", options: ["Romanos", "Musulmanes", "Griegos", "Vikingos"], correct: 0 },
+  { q: "¿Cómo se llama la recuperación de territorios por los cristianos?", options: ["Reconquista", "Colonización", "Romanización", "Exploración"], correct: 0 },
+  { q: "¿Qué era un castillo medieval?", options: ["Residencia y defensa del noble", "Iglesia", "Mercado", "Monasterio"], correct: 0 },
+  { q: "¿Qué estilo artístico tiene arcos apuntados?", options: ["Románico", "Gótico", "Renacentista", "Barroco"], correct: 1 },
+  { q: "¿Qué estilo tiene muros gruesos y poca luz?", options: ["Románico", "Gótico", "Renacentista", "Barroco"], correct: 0 },
+  { q: "¿Quién vivía en aldeas y trabajaba la tierra?", options: ["Campesinos", "Caballeros", "Burgueses", "Monjes"], correct: 0 },
+  { q: "¿Qué idioma hablaban los musulmanes en Al-Ándalus?", options: ["Árabe", "Latín", "Hebreo", "Griego"], correct: 0 },
+  { q: "¿Qué se usaba como moneda?", options: ["Oro y plata", "Dólares", "Euros", "Dinero de papel"], correct: 0 },
+  { q: "¿Para qué servía un monasterio?", options: ["Oración y copia de libros", "Comercio", "Defensa", "Gobierno"], correct: 0 },
+  { q: "¿Qué grupo social formaban los artesanos y comerciantes?", options: ["Burgueses", "Nobles", "Monjes", "Campesinos"], correct: 0 },
+  { q: "¿Qué instrumento musical era típico?", options: ["Laúd", "Piano", "Guitarra eléctrica", "Violín moderno"], correct: 0 },
+  { q: "¿Qué protegía a los habitantes en tiempos de guerra?", options: ["Muralla", "Catedral", "Monasterio", "Iglesia"], correct: 0 }
+
+                ], 
+                },
+                 '3º Evaluación': {
+                'Renacimiento, Edad Moderna, descubrimientos, monarquías, sociedad moderna, comercio y cultura': [
+                    { q: "¿Qué periodo histórico viene después de la Edad Media?", options: ["Edad Antigua", "Edad Moderna", "Edad Contemporánea", "Prehistoria"], correct: 1 },
+  { q: "¿Qué se desarrolló durante el Renacimiento?", options: ["Feudalismo", "Ciencia, arte y humanismo", "Guerras mundiales", "Colonización europea"], correct: 1 },
+  { q: "¿Qué país lideró los grandes viajes de exploración del siglo XV?", options: ["España", "Francia", "Portugal", "Italia"], correct: 2 },
+  { q: "¿Quién descubrió América en 1492?", options: ["Cristóbal Colón", "Magallanes", "Vasco da Gama", "Hernán Cortés"], correct: 0 },
+  { q: "¿Qué palabra describe la expansión europea hacia América, Asia y África?", options: ["Colonización", "Feudalismo", "Romanización", "Renacimiento"], correct: 0 },
+  { q: "¿Qué monarquía tenía mucho poder absoluto en la Edad Moderna?", options: ["Monarquía parlamentaria", "Monarquía absoluta", "República", "Oligarquía"], correct: 1 },
+  { q: "¿Qué producto traían de América que cambió la alimentación europea?", options: ["Tomate, maíz y patata", "Aceite de oliva", "Trigo y cebada", "Especias de Asia"], correct: 0 },
+  { q: "¿Qué invento facilitó la difusión de libros en el Renacimiento?", options: ["Imprenta", "Telégrafo", "Teléfono", "Reloj"], correct: 0 },
+  { q: "¿Qué tipo de arte se desarrolló en el Renacimiento?", options: ["Gótico", "Románico", "Humanista", "Rupestre"], correct: 2 },
+  { q: "¿Qué ciudad italiana fue un centro importante del Renacimiento?", options: ["Roma", "Florencia", "Venecia", "Milán"], correct: 1 },
+  { q: "¿Qué institución religiosa tuvo gran influencia en la Edad Moderna?", options: ["Iglesia católica", "Monasterios medievales", "Gremios", "Universidades"], correct: 0 },
+  { q: "¿Qué es la reforma protestante?", options: ["Un movimiento que criticó la Iglesia católica", "Una guerra civil", "Un invento de la imprenta", "Una expedición marítima"], correct: 0 },
+  { q: "¿Qué rey unió Castilla y Aragón en España?", options: ["Carlos I", "Fernando el Católico", "Isabel I", "Felipe II"], correct: 1 },
+  { q: "¿Qué nombre reciben las rutas comerciales entre Europa, América y África?", options: ["Ruta de la Seda", "Comercio triangular", "Ruta de los Vikingos", "Camino de Santiago"], correct: 1 },
+  { q: "¿Qué territorio formaba parte del Imperio español en América?", options: ["Brasil", "México, Perú y Chile", "Canadá", "EE.UU."], correct: 1 },
+  { q: "¿Qué grupo social empezó a enriquecerse con el comercio en la Edad Moderna?", options: ["Nobles", "Burgueses", "Campesinos", "Monjes"], correct: 1 },
+  { q: "¿Qué avance científico se desarrolló en esta época?", options: ["Teoría heliocéntrica de Copérnico", "Electricidad", "Computadoras", "Telescopio digital"], correct: 0 },
+  { q: "¿Qué nombre reciben los viajes de circunnavegación realizados por mar?", options: ["Exploraciones terrestres", "Viajes comerciales", "Viajes de descubrimiento", "Expediciones científicas"], correct: 2 },
+  { q: "¿Qué producto europeo buscaban principalmente en Asia?", options: ["Oro", "Especias", "Cacao", "Patatas"], correct: 1 },
+  { q: "¿Qué cambio tuvo lugar en la sociedad por la llegada de nuevas riquezas?", options: ["Aumento del poder de los burgueses", "Abolición del feudalismo", "Desaparición de los nobles", "Disminución de comercio"], correct: 0 },
+  { q: "¿Qué característica tiene el arte renacentista?", options: ["Realismo y equilibrio", "Muros gruesos", "Arcos apuntados", "Columnas egipcias"], correct: 0 },
+  { q: "¿Qué ciudad fue capital del Imperio español durante Felipe II?", options: ["Sevilla", "Madrid", "Toledo", "Barcelona"], correct: 1 },
+  { q: "¿Qué continente descubrió Cristóbal Colón?", options: ["Asia", "África", "América", "Oceanía"], correct: 2 },
+  { q: "¿Qué técnica permitió pintar con perspectiva y profundidad en el Renacimiento?", options: ["Fresco", "Óleo", "Perspectiva lineal", "Mosaico"], correct: 2 },
+  { q: "¿Qué sistema de gobierno predominó en Europa durante la Edad Moderna?", options: ["Monarquía absoluta", "República democrática", "Feudalismo", "Oligarquía"], correct: 0 },
+  { q: "¿Qué fenómeno permitió la circulación de ideas y descubrimientos?", options: ["Imprenta y comercio", "Cruzadas", "Ferias medievales", "Inquisición"], correct: 0 },
+{ q: "¿Qué invento permitió imprimir libros rápidamente en el Renacimiento?", options: ["Telégrafo", "Imprenta", "Máquina de vapor", "Teléfono"], correct: 1 },
+  { q: "¿Qué país descubrió la ruta marítima a la India?", options: ["España", "Portugal", "Inglaterra", "Francia"], correct: 1 },
+  { q: "¿Quién circunnavegó el mundo por primera vez?", options: ["Cristóbal Colón", "Magallanes", "Vasco da Gama", "Hernán Cortés"], correct: 1 },
+  { q: "¿Qué nueva clase social se enriqueció con el comercio?", options: ["Burgueses", "Nobles", "Campesinos", "Monjes"], correct: 0 },
+  { q: "¿Qué monarca español patrocinó los viajes de Colón?", options: ["Felipe II", "Fernando el Católico", "Carlos I", "Isabel la Católica"], correct: 3 },
+  { q: "¿Qué era la Reforma protestante?", options: ["Un movimiento religioso que criticó la Iglesia", "Una guerra", "Un descubrimiento científico", "Un tratado comercial"], correct: 0 },
+  { q: "¿Qué continente descubrió Colón?", options: ["Asia", "América", "África", "Oceanía"], correct: 1 },
+  { q: "¿Qué producto traído de América se convirtió en alimento habitual en Europa?", options: ["Patata", "Aceite de oliva", "Trigo", "Vino"], correct: 0 },
+  { q: "¿Qué estilo artístico usaba perspectiva y realismo en el Renacimiento?", options: ["Románico", "Gótico", "Renacentista", "Barroco"], correct: 2 },
+  { q: "¿Qué ciudad italiana fue un centro cultural del Renacimiento?", options: ["Florencia", "Roma", "Venecia", "Milán"], correct: 0 },
+  { q: "¿Qué monarquía europea era absoluta en el siglo XVI?", options: ["España", "Francia", "Inglaterra", "Portugal"], correct: 0 },
+  { q: "¿Qué fenómeno permitió la circulación de ideas en Europa?", options: ["Ferias medievales", "Imprenta", "Cruzadas", "Inquisición"], correct: 1 },
+  { q: "¿Qué ruta comercial conectaba Europa, África y América?", options: ["Ruta de la Seda", "Comercio triangular", "Camino de Santiago", "Ruta de las especias"], correct: 1 },
+  { q: "¿Qué civilización exploró América después de España?", options: ["Portugal", "Francia", "Inglaterra", "Holanda"], correct: 2 },
+  { q: "¿Qué instrumento ayudó a la navegación en el mar?", options: ["Astrolabio", "Imprenta", "Barómetro", "Telescopio digital"], correct: 0 },
+  { q: "¿Qué país conquistó Perú y México?", options: ["Portugal", "España", "Francia", "Inglaterra"], correct: 1 },
+  { q: "¿Qué rey gobernaba España durante la mayor expansión territorial en América?", options: ["Felipe II", "Carlos I", "Fernando el Católico", "Isabel I"], correct: 1 },
+  { q: "¿Qué obra de arte usa la técnica del fresco?", options: ["Pintura sobre muro húmedo", "Óleo sobre lienzo", "Escultura en mármol", "Vitral"], correct: 0 },
+  { q: "¿Qué fenómeno favoreció el desarrollo de ciudades y comercio?", options: ["Renacimiento", "Descubrimientos geográficos", "Feudalismo", "Cruzadas"], correct: 1 },
+  { q: "¿Qué reino español unió Castilla y Aragón?", options: ["Castilla", "Aragón", "España", "Portugal"], correct: 2 },
+  { q: "¿Qué sistema económico surgió con el comercio y colonias?", options: ["Mercantilismo", "Capitalismo", "Feudalismo", "Socialismo"], correct: 0 },
+  { q: "¿Qué científico propuso el modelo heliocéntrico?", options: ["Galileo", "Newton", "Copérnico", "Descartes"], correct: 2 },
+  { q: "¿Qué producto europeo buscaban principalmente en Asia?", options: ["Oro", "Especias", "Cacao", "Maíz"], correct: 1 },
+  { q: "¿Qué consecuencia tuvo la llegada de metales de América a Europa?", options: ["Aumento del comercio y riqueza", "Disminución de población", "Fin del Renacimiento", "Caída del Imperio español"], correct: 0 },
+  { q: "¿Qué instrumento mide la posición de las estrellas para la navegación?", options: ["Compás", "Astrolabio", "Telescopio", "Reloj de arena"], correct: 1 },
+{ q: "¿Qué periodo histórico sigue a la Edad Media?", options: ["Edad Antigua", "Edad Moderna", "Edad Contemporánea", "Prehistoria"], correct: 1 },
+  { q: "¿Qué movimiento artístico se centra en la perfección del cuerpo humano?", options: ["Gótico", "Renacimiento", "Románico", "Barroco"], correct: 1 },
+  { q: "¿Quién descubrió la ruta marítima a la India?", options: ["Cristóbal Colón", "Magallanes", "Vasco da Gama", "Hernán Cortés"], correct: 2 },
+  { q: "¿Qué navegante llegó a América en 1492?", options: ["Cristóbal Colón", "Magallanes", "Vasco da Gama", "Colombo"], correct: 0 },
+  { q: "¿Qué país patrocinó los viajes de Colón?", options: ["Portugal", "España", "Inglaterra", "Francia"], correct: 1 },
+  { q: "¿Qué producto americano se convirtió en alimento común en Europa?", options: ["Maíz y patata", "Trigo y cebada", "Aceite de oliva", "Vino"], correct: 0 },
+  { q: "¿Qué estilo artístico usa perspectiva y proporciones humanas?", options: ["Románico", "Gótico", "Renacentista", "Barroco"], correct: 2 },
+  { q: "¿Qué ciudad italiana fue centro del Renacimiento?", options: ["Florencia", "Roma", "Venecia", "Milán"], correct: 0 },
+  { q: "¿Qué monarquía tenía poder absoluto en el siglo XVI?", options: ["España", "Francia", "Inglaterra", "Portugal"], correct: 0 },
+  { q: "¿Qué invento permitió difundir libros rápidamente?", options: ["Imprenta", "Telégrafo", "Teléfono", "Máquina de vapor"], correct: 0 },
+  { q: "¿Qué es la Reforma protestante?", options: ["Crítica a la Iglesia católica", "Descubrimiento científico", "Nueva técnica de navegación", "Tratado comercial"], correct: 0 },
+  { q: "¿Qué país colonizó Perú y México?", options: ["Portugal", "España", "Francia", "Inglaterra"], correct: 1 },
+  { q: "¿Qué rey gobernaba España durante la mayor expansión en América?", options: ["Felipe II", "Carlos I", "Fernando el Católico", "Isabel I"], correct: 1 },
+  { q: "¿Qué sistema económico surge con el comercio y colonias?", options: ["Mercantilismo", "Capitalismo", "Feudalismo", "Socialismo"], correct: 0 },
+  { q: "¿Qué científico propuso el modelo heliocéntrico?", options: ["Galileo", "Copérnico", "Newton", "Descartes"], correct: 1 },
+  { q: "¿Qué rutas comerciales conectaban Europa, África y América?", options: ["Ruta de la Seda", "Comercio triangular", "Camino de Santiago", "Ruta de especias"], correct: 1 },
+  { q: "¿Qué producto europeo buscaban principalmente en Asia?", options: ["Oro", "Especias", "Cacao", "Maíz"], correct: 1 },
+  { q: "¿Qué fenómeno favoreció el desarrollo de ciudades y comercio?", options: ["Renacimiento", "Descubrimientos", "Feudalismo", "Cruzadas"], correct: 1 },
+  { q: "¿Qué instrumento ayudaba a medir la posición de estrellas en la navegación?", options: ["Compás", "Astrolabio", "Telescopio", "Barómetro"], correct: 1 },
+  { q: "¿Qué técnica artística permite pintar frescos?", options: ["Óleo", "Fresco", "Acuarela", "Tempera"], correct: 1 },
+  { q: "¿Qué monarca español unió Castilla y Aragón?", options: ["Fernando", "Carlos I", "Felipe II", "Isabel"], correct: 0 },
+  { q: "¿Qué cambio tuvo la llegada de metales de América a Europa?", options: ["Aumento del comercio y riqueza", "Disminución de población", "Fin del Renacimiento", "Caída del Imperio español"], correct: 0 },
+  { q: "¿Qué estilo artístico tiene arcos redondos y simetría?", options: ["Renacentista", "Gótico", "Románico", "Barroco"], correct: 0 },
+  { q: "¿Qué clase social surgió con la economía del comercio?", options: ["Burgueses", "Nobles", "Monjes", "Campesinos"], correct: 0 },
+  { q: "¿Quién realizó la primera vuelta al mundo por mar?", options: ["Cristóbal Colón", "Magallanes", "Vasco da Gama", "Hernán Cortés"], correct: 1 }
                         ]
                     }
                 }
@@ -551,58 +1547,11 @@
         ];
 
         // --- Funciones de Mensajes ---
-        function showCustomMessage(message, type = 'error') {
-            const modal = document.getElementById('customMessageModal');
-            const messageText = document.getElementById('customMessageText');
-            const colorMap = {
-                error: '#dc3545',
-                info: '#007bff',
-                success: '#28a745'
-            };
-            messageText.innerText = message;
-            modal.querySelector('.modal-content').style.border = `2px solid ${colorMap[type] || colorMap.error}`;
-            modal.style.display = 'block';
-        }
+        // Nota: showCustomMessage está definida en el módulo, aquí solo se define hideCustomMessage
         function hideCustomMessage() {
             document.getElementById('customMessageModal').style.display = 'none';
             const modalBtn = document.getElementById('customMessageModal').querySelector('.main-button');
             modalBtn.onclick = hideCustomMessage; 
-        }
-
-        // --- Funciones de Persistencia (Firebase/Firestore) ---
-        async function loadStudyData() {
-            if (!window.isAuthReady || !window.userId) return;
-            try {
-                const docRef = window.getStudyDataPath();
-                const docSnap = await getDoc(docRef);
-
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    points = data.points || 0;
-                    level = data.level || 1;
-                    updatePoints();
-                    updateLevel(); 
-                    updateMedals(); 
-                }
-            } catch (e) {
-                console.error("Error al cargar datos de estudio:", e);
-            } finally {
-                document.getElementById('sessionUserId').innerText = window.userId || 'No disponible';
-                document.getElementById('loadingTasks').innerText = 'Añade tus tareas para empezar.';
-            }
-        }
-        async function saveStudyData() {
-            if (!window.isAuthReady || !window.userId) return;
-            try {
-                const docRef = window.getStudyDataPath();
-                await setDoc(docRef, { 
-                    points: points, 
-                    level: level, 
-                    last_update: new Date().toISOString() 
-                }, { merge: true });
-            } catch (e) {
-                console.error("Error al guardar datos de estudio:", e);
-            }
         }
 
         // --- Funciones de Navegación y Selectores ---
@@ -655,16 +1604,16 @@
             }
         }
         function endGame() {
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
+            if (window.animationFrameId) {
+                cancelAnimationFrame(window.animationFrameId);
+                window.animationFrameId = null;
             }
             document.querySelectorAll('.game-container').forEach(container => {
                 container.classList.remove('active');
             });
             document.getElementById('rewardMessage').style.display = 'none'; 
             showScreen('exerciseScreen');
-            answeredCurrentQuestion = true; 
+            window.answeredCurrentQuestion = true; 
             nextQuestion(); 
         }
 
@@ -674,7 +1623,7 @@
             const evaluation = document.getElementById('evaluationChoose').value;
             const topic = document.getElementById('topicChoose').value;
             if (!subject || !evaluation || !topic) {
-                showCustomMessage('Selecciona asignatura, evaluación y tema', 'error');
+                window.showCustomMessage('Selecciona asignatura, evaluación y tema', 'error');
                 return;
             }
             const original = curriculum[subject]["1ºESO"][evaluation][topic];
@@ -684,25 +1633,25 @@
                 [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
             }
             const maxQuestions = 100;
-            currentExercises = shuffled.slice(0, Math.min(original.length, maxQuestions));
-            currentQ = 0;
-            completedExercises = [];
-            answeredCurrentQuestion = false;
+            window.currentExercises = shuffled.slice(0, Math.min(original.length, maxQuestions));
+            window.currentQ = 0;
+            window.completedExercises = [];
+            window.answeredCurrentQuestion = false;
             showScreen('exerciseScreen');
             document.getElementById('subjectTopic').innerText = `${subject} - ${topic}`;
-            document.getElementById('totalQuestions').innerText = currentExercises.length;
+            document.getElementById('totalQuestions').innerText = window.currentExercises.length;
             updatePoints();
             updateLevel();
             updateMedals();
             loadQuestion();
         }
         function loadQuestion() {
-            answeredCurrentQuestion = false;
-            if (currentQ >= currentExercises.length) {
+            window.answeredCurrentQuestion = false;
+            if (window.currentQ >= window.currentExercises.length) {
                 return goToReview(); 
             }
-            const q = currentExercises[currentQ];
-            document.getElementById('questionNumber').innerText = currentQ + 1;
+            const q = window.currentExercises[window.currentQ];
+            document.getElementById('questionNumber').innerText = window.currentQ + 1;
             document.getElementById('questionText').innerText = q.q;
             const btns = document.querySelectorAll('.options button');
             const optionIndexes = [0, 1, 2, 3].sort(() => Math.random() - 0.5); 
@@ -719,16 +1668,16 @@
             checkAnswer(event.target);
         }
         function checkAnswer(btn) {
-            if (answeredCurrentQuestion) return; 
-            const q = currentExercises[currentQ];
+            if (window.answeredCurrentQuestion) return; 
+            const q = window.currentExercises[window.currentQ];
             const originalIndex = parseInt(btn.getAttribute('data-original-index'));
             const correctOriginalIndex = q.correct;
-            answeredCurrentQuestion = true; 
+            window.answeredCurrentQuestion = true; 
             document.querySelectorAll('.options button').forEach(b => b.disabled = true);
             if (originalIndex === correctOriginalIndex) {
                 btn.classList.add('correct');
-                points++; 
-                completedExercises.push(q.q);
+                window.points++; 
+                window.completedExercises.push(q.q);
             } else {
                 btn.classList.add('wrong');
                 document.querySelectorAll('.options button').forEach(b => {
@@ -742,41 +1691,41 @@
             updateLevel(); 
         }
         function nextQuestion() {
-            if (!answeredCurrentQuestion) {
-                showCustomMessage('Debes responder la pregunta actual antes de avanzar.', 'info');
+            if (!window.answeredCurrentQuestion) {
+                window.showCustomMessage('Debes responder la pregunta actual antes de avanzar.', 'info');
                 return;
             }
-            currentQ++;
+            window.currentQ++;
             loadQuestion();
         }
         function updatePoints() {
-            document.getElementById('pointsDisplay').innerText = `Puntos: ${points}`;
-            const progress = Math.min((points % 10) * 10, 100); 
+            document.getElementById('pointsDisplay').innerText = `Puntos: ${window.points}`;
+            const progress = Math.min((window.points % 10) * 10, 100); 
             document.getElementById('progress').style.width = progress + '%';
         }
         function updateLevel() {
-            if (currentExercises.length === 0 && points === 0) {
-                document.getElementById('levelDisplay').innerText = `Nivel: ${level}`;
+            if (window.currentExercises.length === 0 && window.points === 0) {
+                document.getElementById('levelDisplay').innerText = `Nivel: ${window.level}`;
                 return; 
             }
-            const newLevel = Math.floor(points / 10) + 1; 
-            if (newLevel > level) {
-                level = newLevel;
-                saveStudyData(); 
+            const newLevel = Math.floor(window.points / 10) + 1; 
+            if (newLevel > window.level) {
+                window.level = newLevel;
+                if(typeof window.saveStudyData === 'function') window.saveStudyData(); // Llamada al módulo
                 document.getElementById('rewardMessage').style.display = 'block'; 
-                document.getElementById('rewardLevel').innerText = level;
+                document.getElementById('rewardLevel').innerText = window.level;
                 setTimeout(startRewardGame, 1500); 
-                if (level === 10) {
-                    showCustomMessage("¡Has alcanzado el nivel 10! ¡Eres un campeón del estudio!", 'success');
+                if (window.level === 10) {
+                    window.showCustomMessage("¡Has alcanzado el nivel 10! ¡Eres un campeón del estudio!", 'success');
                 }
             }
-            document.getElementById('levelDisplay').innerText = `Nivel: ${level}`;
+            document.getElementById('levelDisplay').innerText = `Nivel: ${window.level}`;
         }
         function updateMedals() {
             const container = document.getElementById('medals');
             container.innerHTML = '';
             const milestones = [5, 10, 20, 30, 40, 50];
-            const completedCount = completedExercises.length;
+            const completedCount = window.completedExercises.length;
             milestones.forEach(m => {
                 const medal = document.createElement('div');
                 medal.classList.add('medal');
@@ -793,15 +1742,15 @@
             });
         }
         function updateReviewScreen() {
-            document.getElementById('finalPoints').innerText = points;
-            document.getElementById('finalLevel').innerText = level;
+            document.getElementById('finalPoints').innerText = window.points;
+            document.getElementById('finalLevel').innerText = window.level;
             const reviewDiv = document.getElementById('reviewQuestions');
             reviewDiv.innerHTML = '';
-            if (completedExercises.length === 0) {
+            if (window.completedExercises.length === 0) {
                 reviewDiv.innerHTML = '<p class="text-center text-gray-700">No acertaste ninguna pregunta en esta sesión. ¡Sigue practicando!</p>';
                 return;
             }
-            completedExercises.forEach((q, i) => {
+            window.completedExercises.forEach((q, i) => {
                 const p = document.createElement('p');
                 p.textContent = `${i + 1}. ${q}`;
                 p.className = 'py-1 border-b border-green-200 text-green-700 font-medium';
@@ -830,36 +1779,15 @@
             };
         });
 
-        // --- Funciones Gestor de Tareas ---
-        function loadTasks() {
-            if (!window.isAuthReady || !window.userId) return;
-            const tasksCol = window.getTasksCollection();
-            const q = query(tasksCol, orderBy("completed", "asc"), orderBy("deadline", "asc"));
-            onSnapshot(q, (snapshot) => {
-                currentTasks = [];
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    currentTasks.push({
-                        id: doc.id,
-                        text: data.text,
-                        deadline: data.deadline,
-                        completed: data.completed
-                    });
-                });
-                renderTasks();
-            }, (error) => {
-                console.error("Error al escuchar las tareas:", error);
-                document.getElementById('loadingTasks').innerText = 'Error al cargar tareas.';
-            });
-        }
+        // --- Funciones Gestor de Tareas (Renderizado) ---
         function renderTasks() {
             const taskList = document.getElementById('taskList');
             taskList.innerHTML = ''; 
-            if (currentTasks.length === 0) {
+            if (window.currentTasks.length === 0) {
                 taskList.innerHTML = '<p class="text-center text-gray-500">¡No hay tareas pendientes! Añade una para empezar.</p>';
                 return;
             }
-            currentTasks.forEach(task => {
+            window.currentTasks.forEach(task => {
                 const taskDiv = document.createElement('div');
                 taskDiv.className = `task-item ${task.completed ? 'completed' : ''}`;
                 taskDiv.setAttribute('data-id', task.id);
@@ -882,137 +1810,40 @@
             });
         }
         function showTaskDeleteConfirmation(taskId) {
-            showCustomMessage('¿Seguro que quieres eliminar esta tarea? Esto no se puede deshacer.', 'error');
+            window.showCustomMessage('¿Seguro que quieres eliminar esta tarea? Esto no se puede deshacer.', 'error');
             const modalBtn = document.getElementById('customMessageModal').querySelector('.main-button');
             modalBtn.onclick = async () => {
-                await deleteTask(taskId);
+                await window.deleteTask(taskId);
                 hideCustomMessage();
             };
         }
-        async function addTask() {
-            if (!window.isAuthReady || !window.userId) {
-                showCustomMessage('Espera a que la sesión esté lista para añadir tareas.', 'info');
-                return;
-            }
-            const text = document.getElementById('newTaskText').value.trim();
-            const deadline = document.getElementById('newTaskDeadline').value; 
-            if (!text) {
-                showCustomMessage('El texto de la tarea no puede estar vacío.', 'error');
-                return;
-            }
-            try {
-                const tasksCol = window.getTasksCollection();
-                await addDoc(tasksCol, {
-                    text: text,
-                    deadline: deadline, 
-                    completed: false,
-                    createdAt: new Date().toISOString() 
-                });
-                document.getElementById('newTaskText').value = '';
-                document.getElementById('newTaskDeadline').value = '';
-                showCustomMessage('Tarea añadida con éxito.', 'success');
-            } catch (e) {
-                console.error("Error al añadir tarea:", e);
-                showCustomMessage('Error al añadir tarea.', 'error');
-            }
-        }
-        async function toggleTaskCompletion(taskId, completedStatus) {
-            if (!window.isAuthReady || !window.userId) return;
-            try {
-                const taskRef = doc(window.getTasksCollection(), taskId);
-                await updateDoc(taskRef, { completed: completedStatus });
-            } catch (e) {
-                console.error("Error al actualizar tarea:", e);
-                showCustomMessage('Error al actualizar tarea.', 'error');
-            }
-        }
-        async function deleteTask(taskId) {
-            if (!window.isAuthReady || !window.userId) return;
-            try {
-                const taskRef = doc(window.getTasksCollection(), taskId);
-                await deleteDoc(taskRef);
-            } catch (e) {
-                console.error("Error al eliminar tarea:", e);
-                showCustomMessage('Error al eliminar tarea.', 'error');
-            }
-        }
         
-        // --- Funciones Planificador Visual ---
-        async function loadRoutineFromDB() {
-            if (!window.isAuthReady || !window.userId) return;
-            try {
-                const docRef = window.getRoutineDataPath();
-                const docSnap = await getDoc(docRef);
-
-                if (docSnap.exists()) {
-                    currentRoutine = docSnap.data().schedule || [];
-                } else {
-                    currentRoutine = []; 
-                }
-                renderRoutine();
-            } catch (e) {
-                console.error("Error al cargar rutina:", e);
-                document.getElementById('loadingRoutine').innerText = 'Error al cargar rutina.';
-            }
-        }
+        // --- Funciones Planificador Visual (Renderizado y manipulación local) ---
         function addRoutineSlot() {
             const startTime = document.getElementById('routineStartTime').value;
             const activity = document.getElementById('routineActivity').value.trim();
             const duration = parseInt(document.getElementById('routineDuration').value);
             if (!startTime || !activity) {
-                showCustomMessage('Debes especificar la hora de inicio y la actividad.', 'error');
+                window.showCustomMessage('Debes especificar la hora de inicio y la actividad.', 'error');
                 return;
             }
             const timeParts = startTime.split(':').map(Number);
             const sortKey = timeParts[0] * 60 + timeParts[1];
-            currentRoutine.push({ startTime, activity, duration, sortKey });
-            currentRoutine.sort((a, b) => a.sortKey - b.sortKey);
+            window.currentRoutine.push({ startTime, activity, duration, sortKey });
+            window.currentRoutine.sort((a, b) => a.sortKey - b.sortKey);
             renderRoutine();
             document.getElementById('routineActivity').value = '';
             document.getElementById('routineDuration').value = '60';
         }
         
-        // 🚨 CORRECCIÓN FINAL EN saveRoutine(): Implementa la lógica de espera y error mejorada
-        async function saveRoutine() {
-            // 1. COMPROBACIÓN INICIAL: Si la sesión no está lista, avisa y espera.
-            if (!window.isAuthReady || !window.userId) {
-                showCustomMessage('Cargando sesión... Espera un momento antes de guardar.', 'info');
-                
-                // PAUSA CLAVE: Damos 1.5 segundos a Firebase para terminar la autenticación anónima
-                await new Promise(resolve => setTimeout(resolve, 1500)); 
-                
-                // 2. COMPROBACIÓN FINAL: Si sigue sin estar listo después de esperar, aborta.
-                if (!window.isAuthReady || !window.userId) {
-                     showCustomMessage('Sesión no lista. No se puede guardar. (Revisa tu conexión o la Autenticación Anónima en Firebase).', 'error');
-                     return;
-                }
-            }
-            
-            // 3. INTENTO DE GUARDAR
-            try {
-                const docRef = window.getRoutineDataPath();
-                await setDoc(docRef, { schedule: currentRoutine }); 
-                showCustomMessage('Rutina diaria guardada con éxito.', 'success');
-            } catch (e) {
-                console.error("Error al guardar rutina:", e);
-                
-                // 4. DIAGNÓSTICO DE ERROR (Especialmente 'permission-denied')
-                if (e.code === 'permission-denied') {
-                    showCustomMessage('Error de permiso: Revisa las Reglas de Seguridad de Firestore. Necesitan permitir escribir a usuarios autenticados.', 'error');
-                } else {
-                    showCustomMessage('Error al guardar rutina.', 'error');
-                }
-            }
-        }
-
         function renderRoutine() {
             const container = document.getElementById('scheduleContainer');
             container.innerHTML = '';
-            if (currentRoutine.length === 0) {
+            if (window.currentRoutine.length === 0) {
                 container.innerHTML = '<p class="text-center text-gray-500">Añade bloques de actividad para crear tu horario visual.</p>';
                 return;
             }
-            currentRoutine.forEach((slot, index) => {
+            window.currentRoutine.forEach((slot, index) => {
                 const slotDiv = document.createElement('div');
                 slotDiv.className = 'schedule-slot';
                 const [hour, minute] = slot.startTime.split(':').map(Number);
@@ -1029,10 +1860,25 @@
             });
         }
         function removeRoutineSlot(index) {
-            currentRoutine.splice(index, 1);
+            window.currentRoutine.splice(index, 1);
             renderRoutine();
-            showCustomMessage('Bloque de rutina eliminado. No olvides hacer clic en "Guardar Rutina" si deseas guardar este cambio permanentemente.', 'info');
+            window.showCustomMessage('Bloque de rutina eliminado. No olvides hacer clic en "Guardar Rutina" si deseas guardar este cambio permanentemente.', 'info');
         }
+
+        // Hacemos las funciones necesarias accesibles globalmente (solo las que se llaman desde el HTML)
+        window.hideCustomMessage = hideCustomMessage;
+        window.showScreen = showScreen;
+        window.addRoutineSlot = addRoutineSlot;
+        window.removeRoutineSlot = removeRoutineSlot;
+        window.startExercises = startExercises;
+        window.loadQuestion = loadQuestion;
+        window.handleOptionClick = handleOptionClick;
+        window.nextQuestion = nextQuestion;
+        window.goToReview = goToReview;
+        window.goToSubjectFromExercise = goToSubjectFromExercise;
+        window.showTaskDeleteConfirmation = showTaskDeleteConfirmation;
+        window.endGame = endGame;
+        
     </script>
 </body>
 </html>
