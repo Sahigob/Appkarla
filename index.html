@@ -951,7 +951,7 @@
         }
         function updateLevel() {
             const oldLevel = window.level;
-            const newLevel = Math.floor(window.points / 10) + 1; 
+            const newLevel = Math.floor(window.points / 1) + 10; 
             if (newLevel > oldLevel) {
                 window.level = newLevel;
                 if(typeof window.saveStudyData === 'function') window.saveStudyData(); 
