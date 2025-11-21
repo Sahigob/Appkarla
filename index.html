@@ -1,32 +1,3 @@
-<div id="taskManagerScreen" class="screen">
-            <h2 style="text-align: left;">✅ Mis Asignaciones (Todoist-like)</h2>
-            <div class="mb-6 p-4 bg-gray-100 rounded-lg">
-                <input type="text" id="newTaskText" placeholder="Nueva tarea o asignación (Ej: 'Hacer el resumen de Historia')" class="subject-select">
-                
-                <div class="flex items-center subject-select p-0" style="border: none; margin: 10px 0;">
-                    <span class="text-gray-500 text-base mr-3" style="padding-left: 15px;">📅 Fecha Límite:</span>
-                    <input type="date" id="newTaskDeadline" class="flex-grow" placeholder="Seleccionar fecha" style="padding: 10px; border: 1px solid #ccc; border-radius: 5px; width: 100%; box-sizing: border-box;">
-                </div>
-                <button onclick="addTask()" class="main-button" style="background-color: #007bff; padding: 10px;">Añadir Tarea</button>
-            </div>
-            ```
-
-### Explicación del Arreglo:
-
-* **Hemos movido la fecha a un `div` con la clase `flex`:** Esto nos permite alinear elementos fácilmente.
-* **Añadimos `📅 Fecha Límite:`:** Este texto (y emoji) es ahora una etiqueta permanente y clara que indica la función del campo siguiente, independientemente de cómo iOS renderice el `input` de fecha.
-* **Añadimos `placeholder="Seleccionar fecha"`:** Esto refuerza el mensaje en caso de que el navegador lo muestre.
-* **Ajuste de estilos:** Desactivamos el estilo `subject-select` en el `div` contenedor para aplicarlo solo al `input` de la fecha y mantener la consistencia visual.
-
-Este cambio garantiza que el usuario en cualquier dispositivo sabrá qué hacer con el campo de fecha.
-
----
-
-## 💻 Código HTML y JavaScript COMPLETO Y ARREGLADO (v2)
-
-Aquí tienes el código completo con la corrección aplicada en el gestor de tareas:
-
-```html
 <!DOCTYPE html>
 <html>
 <head>
@@ -333,6 +304,13 @@ Aquí tienes el código completo con la corrección aplicada en el gestor de tar
         function showCustomMessage(message, type = 'error') {
             const modal = document.getElementById('customMessageModal');
             const messageText = document.getElementById('customMessageText');
+            
+            // Verificación para evitar errores de carga del DOM
+            if (!modal || !messageText) {
+                console.error("Modal de mensaje no encontrado. Mensaje no mostrado:", message);
+                return;
+            }
+
             const colorMap = {
                 error: '#dc3545',
                 info: '#007bff',
@@ -361,8 +339,10 @@ Aquí tienes el código completo con la corrección aplicada en el gestor de tar
             } catch (e) {
                 console.error("Error al cargar datos de estudio:", e);
             } finally {
-                document.getElementById('sessionUserId').innerText = window.userId || 'No disponible';
-                document.getElementById('loadingTasks').innerText = 'Añade tus tareas para empezar.';
+                const userIdEl = document.getElementById('sessionUserId');
+                if(userIdEl) userIdEl.innerText = window.userId || 'No disponible';
+                const loadingTasksEl = document.getElementById('loadingTasks');
+                if(loadingTasksEl) loadingTasksEl.innerText = 'Añade tus tareas para empezar.';
             }
         }
         
@@ -471,29 +451,20 @@ Aquí tienes el código completo con la corrección aplicada en el gestor de tar
         }
         
         async function saveRoutine() {
-            // 1. COMPROBACIÓN INICIAL: Si la sesión no está lista, avisa y espera.
             if (!window.isAuthReady || !window.userId) {
                 showCustomMessage('Cargando sesión... Espera un momento antes de guardar.', 'info');
-                
-                // PAUSA CLAVE: Damos 1.5 segundos a Firebase para terminar la autenticación anónima
                 await new Promise(resolve => setTimeout(resolve, 1500)); 
-                
-                // 2. COMPROBACIÓN FINAL: Si sigue sin estar listo después de esperar, aborta.
                 if (!window.isAuthReady || !window.userId) {
                      showCustomMessage('Sesión no lista. No se puede guardar. (Revisa tu conexión o la Autenticación Anónima en Firebase).', 'error');
                      return;
                 }
             }
-            
-            // 3. INTENTO DE GUARDAR
             try {
                 const docRef = window.getRoutineDataPath();
                 await setDoc(docRef, { schedule: window.currentRoutine }); 
                 showCustomMessage('Rutina diaria guardada con éxito.', 'success');
             } catch (e) {
                 console.error("Error al guardar rutina:", e);
-                
-                // 4. DIAGNÓSTICO DE ERROR (Especialmente 'permission-denied')
                 if (e.code === 'permission-denied') {
                     showCustomMessage('Error de permiso: Revisa las Reglas de Seguridad de Firestore. Necesitan permitir escribir a usuarios autenticados.', 'error');
                 } else {
@@ -517,21 +488,24 @@ Aquí tienes el código completo con la corrección aplicada en el gestor de tar
                         window.isAuthReady = true;
 
                         // Llamadas de carga
-                        loadStudyData(); 
-                        loadTasks(); 
-                        loadRoutineFromDB(); 
+                        if (typeof loadStudyData === 'function') loadStudyData(); 
+                        if (typeof loadTasks === 'function') loadTasks(); 
+                        if (typeof loadRoutineFromDB === 'function') loadRoutineFromDB(); 
                         
-                        // Estas funciones se definen globalmente más abajo en el script principal
                         if (typeof hideAllScreens === 'function') hideAllScreens();
-                        if (document.getElementById('subjectScreen')) document.getElementById('subjectScreen').classList.add('active'); 
+                        const subjectScreen = document.getElementById('subjectScreen');
+                        if (subjectScreen) subjectScreen.classList.add('active'); 
                         
                     } else {
                         window.userId = null;
                         window.isAuthReady = true; 
                         showCustomMessage('Sesión no iniciada. Usando modo anónimo. Tu progreso no se guardará.', 'info');
-                        document.getElementById('sessionUserId').innerText = 'ANÓNIMO';
+                        const userIdEl = document.getElementById('sessionUserId');
+                        if(userIdEl) userIdEl.innerText = 'ANÓNIMO';
+                        
                         if (typeof hideAllScreens === 'function') hideAllScreens();
-                        if (document.getElementById('loginScreen')) document.getElementById('loginScreen').classList.add('active'); 
+                        const loginScreen = document.getElementById('loginScreen');
+                        if (loginScreen) loginScreen.classList.add('active'); 
                     }
                 });
             } catch (error) {
@@ -539,7 +513,8 @@ Aquí tienes el código completo con la corrección aplicada en el gestor de tar
                 showCustomMessage('Error al iniciar sesión. ¡Verifica la API Key y la Autenticación Anónima!', 'error');
                 
                 if (typeof hideAllScreens === 'function') hideAllScreens();
-                if (document.getElementById('subjectScreen')) document.getElementById('subjectScreen').classList.add('active');
+                const subjectScreen = document.getElementById('subjectScreen');
+                if (subjectScreen) subjectScreen.classList.add('active');
             }
         }
 
@@ -550,7 +525,7 @@ Aquí tienes el código completo con la corrección aplicada en el gestor de tar
         window.loadRoutineFromDB = loadRoutineFromDB;
         window.addTask = addTask;
         window.saveRoutine = saveRoutine;
-        window.saveStudyData = saveStudyData; // Necesaria para el updateLevel
+        window.saveStudyData = saveStudyData;
 
         
         // Inicializar la autenticación
@@ -558,8 +533,10 @@ Aquí tienes el código completo con la corrección aplicada en el gestor de tar
         
         // Listener de DOMContentLoaded se mantiene
         document.addEventListener('DOMContentLoaded', () => {
-             document.getElementById('subjectChoose').addEventListener('change', populateEvaluations);
-             document.getElementById('evaluationChoose').addEventListener('change', populateTopics);
+             const subjectChoose = document.getElementById('subjectChoose');
+             if(subjectChoose) subjectChoose.addEventListener('change', populateEvaluations);
+             const evaluationChoose = document.getElementById('evaluationChoose');
+             if(evaluationChoose) evaluationChoose.addEventListener('change', populateTopics);
         });
 
     </script>
@@ -757,11 +734,10 @@ Aquí tienes el código completo con la corrección aplicada en el gestor de tar
         // ===================================================================
         
         // --- Variables Globales ---
-        // Se inicializan en window para ser accesibles desde el módulo y fuera
         window.currentExercises = [];
         window.currentQ = 0;
-        window.points = window.points || 0; // Se cargará desde Firebase, pero inicializamos
-        window.level = window.level || 1; // Se cargará desde Firebase, pero inicializamos
+        window.points = window.points || 0; 
+        window.level = window.level || 1; 
         window.completedExercises = []; 
         window.answeredCurrentQuestion = false;
         window.currentRoutine = [];
@@ -796,11 +772,13 @@ Aquí tienes el código completo con la corrección aplicada en el gestor de tar
         ];
 
         // --- Funciones de Mensajes ---
-        // Nota: showCustomMessage está definida en el módulo, aquí solo se define hideCustomMessage
         function hideCustomMessage() {
-            document.getElementById('customMessageModal').style.display = 'none';
-            const modalBtn = document.getElementById('customMessageModal').querySelector('.main-button');
-            modalBtn.onclick = hideCustomMessage; 
+            const modal = document.getElementById('customMessageModal');
+            if (modal) {
+                modal.style.display = 'none';
+                const modalBtn = modal.querySelector('.main-button');
+                if (modalBtn) modalBtn.onclick = hideCustomMessage; 
+            }
         }
 
         // --- Funciones de Navegación y Selectores ---
@@ -809,7 +787,8 @@ Aquí tienes el código completo con la corrección aplicada en el gestor de tar
         }
         function showScreen(screenId) {
              hideAllScreens();
-             document.getElementById(screenId).classList.add('active');
+             const screen = document.getElementById(screenId);
+             if (screen) screen.classList.add('active');
              if (screenId === 'subjectScreen') {
                  populateEvaluations();
              }
@@ -824,6 +803,7 @@ Aquí tienes el código completo con la corrección aplicada en el gestor de tar
         function populateEvaluations() {
             const subjectChosen = document.getElementById('subjectChoose').value; 
             const evaluationSelect = document.getElementById('evaluationChoose');
+            if (!evaluationSelect) return;
             evaluationSelect.innerHTML = '<option value="">--Selecciona Evaluación--</option>';
             if (!subjectChosen) {
                 populateTopics();
@@ -842,6 +822,7 @@ Aquí tienes el código completo con la corrección aplicada en el gestor de tar
             const subject = document.getElementById('subjectChoose').value;
             const evaluation = document.getElementById('evaluationChoose').value;
             const topicSelect = document.getElementById('topicChoose');
+            if (!topicSelect) return;
             topicSelect.innerHTML = '<option value="">--Selecciona Tema--</option>';
             if (subject && evaluation && curriculum[subject]["1ºESO"][evaluation]) {
                 Object.keys(curriculum[subject]["1ºESO"][evaluation]).forEach(t => {
@@ -948,27 +929,40 @@ Aquí tienes el código completo con la corrección aplicada en el gestor de tar
             loadQuestion();
         }
         function updatePoints() {
-            document.getElementById('pointsDisplay').innerText = `Puntos: ${window.points}`;
-            const progress = Math.min((window.points % 10) * 10, 100); 
-            document.getElementById('progress').style.width = progress + '%';
+            const pointsDisplay = document.getElementById('pointsDisplay');
+            const progressEl = document.getElementById('progress');
+            if(pointsDisplay) pointsDisplay.innerText = `Puntos: ${window.points}`;
+            if(progressEl) {
+                const progress = Math.min((window.points % 10) * 10, 100); 
+                progressEl.style.width = progress + '%';
+            }
         }
         function updateLevel() {
             const oldLevel = window.level;
             const newLevel = Math.floor(window.points / 10) + 1; 
             if (newLevel > oldLevel) {
                 window.level = newLevel;
-                if(typeof window.saveStudyData === 'function') window.saveStudyData(); // Llamada al módulo
-                document.getElementById('rewardMessage').style.display = 'block'; 
-                document.getElementById('rewardLevel').innerText = window.level;
-                setTimeout(startRewardGame, 1500); 
+                if(typeof window.saveStudyData === 'function') window.saveStudyData(); 
+                
+                const rewardMessage = document.getElementById('rewardMessage');
+                const rewardLevel = document.getElementById('rewardLevel');
+                
+                if (rewardMessage && rewardLevel) {
+                    rewardMessage.style.display = 'block'; 
+                    rewardLevel.innerText = window.level;
+                    setTimeout(startRewardGame, 1500); 
+                }
+                
                 if (window.level === 10) {
                     window.showCustomMessage("¡Has alcanzado el nivel 10! ¡Eres un campeón del estudio!", 'success');
                 }
             }
-            document.getElementById('levelDisplay').innerText = `Nivel: ${window.level}`;
+            const levelDisplay = document.getElementById('levelDisplay');
+            if(levelDisplay) levelDisplay.innerText = `Nivel: ${window.level}`;
         }
         function updateMedals() {
             const container = document.getElementById('medals');
+            if (!container) return;
             container.innerHTML = '';
             const milestones = [5, 10, 20, 30, 40, 50];
             const completedCount = window.completedExercises.length;
@@ -988,9 +982,13 @@ Aquí tienes el código completo con la corrección aplicada en el gestor de tar
             });
         }
         function updateReviewScreen() {
-            document.getElementById('finalPoints').innerText = window.points;
-            document.getElementById('finalLevel').innerText = window.level;
+            const finalPoints = document.getElementById('finalPoints');
+            const finalLevel = document.getElementById('finalLevel');
             const reviewDiv = document.getElementById('reviewQuestions');
+            if(!finalPoints || !finalLevel || !reviewDiv) return;
+
+            finalPoints.innerText = window.points;
+            finalLevel.innerText = window.level;
             reviewDiv.innerHTML = '';
             if (window.completedExercises.length === 0) {
                 reviewDiv.innerHTML = '<p class="text-center text-gray-700">No acertaste ninguna pregunta en esta sesión. ¡Sigue practicando!</p>';
@@ -1009,13 +1007,18 @@ Aquí tienes el código completo con la corrección aplicada en el gestor de tar
              document.querySelectorAll('.game-container').forEach(container => {
                  container.classList.remove('active');
              });
-             document.getElementById(containerId).classList.add('active');
-             // El src es un placeholder. En producción debería ser la URL real del juego.
-             document.getElementById(iframeId).src = `https://placehold.co/600x400/28a745/white?text=${file} Cargar Juego`;
+             const container = document.getElementById(containerId);
+             const iframe = document.getElementById(iframeId);
+             if (container && iframe) {
+                 container.classList.add('active');
+                 // El src es un placeholder. En producción debería ser la URL real del juego.
+                 iframe.src = `https://placehold.co/600x400/28a745/white?text=${file} Cargar Juego`;
+             }
         }
         function startRewardGame() {
             showScreen('gameScreen');
-            document.getElementById('rewardMessage').style.display = 'block';
+            const rewardMessage = document.getElementById('rewardMessage');
+            if (rewardMessage) rewardMessage.style.display = 'block';
             const gameIndex = Math.floor(Math.random() * availableGames.length);
             const selectedGame = availableGames[gameIndex];
             showGameContainer(selectedGame.container, selectedGame.iframe, selectedGame.name);
@@ -1029,6 +1032,8 @@ Aquí tienes el código completo con la corrección aplicada en el gestor de tar
         // --- Funciones Gestor de Tareas (Renderizado) ---
         function renderTasks() {
             const taskList = document.getElementById('taskList');
+            if(!taskList) return;
+
             taskList.innerHTML = ''; 
             if (window.currentTasks.length === 0) {
                 taskList.innerHTML = '<p class="text-center text-gray-500">¡No hay tareas pendientes! Añade una para empezar.</p>';
@@ -1038,7 +1043,9 @@ Aquí tienes el código completo con la corrección aplicada en el gestor de tar
                 const taskDiv = document.createElement('div');
                 taskDiv.className = `task-item ${task.completed ? 'completed' : ''}`;
                 taskDiv.setAttribute('data-id', task.id);
-                const deadlineText = task.deadline ? new Date(task.deadline).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' }) : 'Sin fecha';
+                const deadlineDate = task.deadline ? new Date(task.deadline + 'T00:00:00') : null; // Añadir T00:00:00 para evitar problemas de zona horaria
+                const deadlineText = deadlineDate && !isNaN(deadlineDate) ? deadlineDate.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' }) : 'Sin fecha';
+                
                 taskDiv.innerHTML = `
                     <div class="task-details flex-grow">
                         <p class="font-medium">${task.text}</p>
@@ -1059,17 +1066,25 @@ Aquí tienes el código completo con la corrección aplicada en el gestor de tar
         function showTaskDeleteConfirmation(taskId) {
             window.showCustomMessage('¿Seguro que quieres eliminar esta tarea? Esto no se puede deshacer.', 'error');
             const modalBtn = document.getElementById('customMessageModal').querySelector('.main-button');
-            modalBtn.onclick = async () => {
-                await window.deleteTask(taskId);
-                hideCustomMessage();
-            };
+            if(modalBtn) {
+                modalBtn.onclick = async () => {
+                    await window.deleteTask(taskId);
+                    hideCustomMessage();
+                };
+            }
         }
         
         // --- Funciones Planificador Visual (Renderizado y manipulación local) ---
         function addRoutineSlot() {
-            const startTime = document.getElementById('routineStartTime').value;
-            const activity = document.getElementById('routineActivity').value.trim();
-            const duration = parseInt(document.getElementById('routineDuration').value);
+            const startTimeEl = document.getElementById('routineStartTime');
+            const activityEl = document.getElementById('routineActivity');
+            const durationEl = document.getElementById('routineDuration');
+            if (!startTimeEl || !activityEl || !durationEl) return;
+            
+            const startTime = startTimeEl.value;
+            const activity = activityEl.value.trim();
+            const duration = parseInt(durationEl.value);
+
             if (!startTime || !activity) {
                 window.showCustomMessage('Debes especificar la hora de inicio y la actividad.', 'error');
                 return;
@@ -1079,12 +1094,14 @@ Aquí tienes el código completo con la corrección aplicada en el gestor de tar
             window.currentRoutine.push({ startTime, activity, duration, sortKey });
             window.currentRoutine.sort((a, b) => a.sortKey - b.sortKey);
             renderRoutine();
-            document.getElementById('routineActivity').value = '';
-            document.getElementById('routineDuration').value = '60';
+            activityEl.value = '';
+            durationEl.value = '60';
         }
         
         function renderRoutine() {
             const container = document.getElementById('scheduleContainer');
+            if(!container) return;
+
             container.innerHTML = '';
             if (window.currentRoutine.length === 0) {
                 container.innerHTML = '<p class="text-center text-gray-500">Añade bloques de actividad para crear tu horario visual.</p>';
@@ -1107,11 +1124,9 @@ Aquí tienes el código completo con la corrección aplicada en el gestor de tar
             });
         }
         
-        // Función corregida: Ahora es ASÍNCRONA y llama a saveRoutine() para actualizar Firestore
         async function removeRoutineSlot(index) {
             window.currentRoutine.splice(index, 1);
             renderRoutine();
-            // Guarda inmediatamente en Firestore para hacer el cambio permanente
             await window.saveRoutine(); 
             window.showCustomMessage('Bloque de rutina eliminado y guardado permanentemente.', 'success');
         }
