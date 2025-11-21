@@ -766,10 +766,22 @@
             { id: 5, name: "Donkeykong", func: "startGame5_Donkeykong", file: "donkeykong.html", container: "donkeykongGameContainer", iframe: "iframe_donkeykong" },
             { id: 6, name: "Juego de la Rana", func: "startGame6_Frogger", file: "frogger.html", container: "froggerGameContainer", iframe: "iframe_frogger" },
             { id: 7, name: "Tenis", func: "startGame7_Pong", file: "pong.html", container: "pongGameContainer", iframe: "iframe_pong" },
-            { id: 8, name: "Tres en Raya", func: "startGame8_TicTacToe", file: "tictactoe.html", container: "tictactoeGameContainer", iframe: "iframe_tictactoe" },
+            { id: 8, name: "Tres en Raya", func: "startGame8_Tictactoe", file: "tictactoe.html", container: "tictactoeGameContainer", iframe: "iframe_tictactoe" },
             { id: 9, name: "Tetris Lite", func: "startGame9_Tetris", file: "tetris.html", container: "tetrisGameContainer", iframe: "iframe_tetris" },
             { id: 10, name: "Pacman", func: "startGame10_Pacman", file: "pacman.html", container: "pacmanGameContainer", iframe: "iframe_pacman" }
         ];
+        
+        // Funciones puente para la selección aleatoria
+        function startGame1_Arkanoid() { startRewardGame(1); }
+        function startGame2_Memoria() { startRewardGame(2); }
+        function startGame3_Matamarcianos() { startRewardGame(3); }
+        function startGame4_Asteroides() { startRewardGame(4); }
+        function startGame5_Donkeykong() { startRewardGame(5); }
+        function startGame6_Frogger() { startRewardGame(6); }
+        function startGame7_Pong() { startRewardGame(7); }
+        function startGame8_Tictactoe() { startRewardGame(8); }
+        function startGame9_Tetris() { startRewardGame(9); }
+        function startGame10_Pacman() { startRewardGame(10); }
 
         // --- Funciones de Mensajes ---
         function hideCustomMessage() {
@@ -950,8 +962,9 @@
                 if (rewardMessage && rewardLevel) {
                     rewardMessage.style.display = 'block'; 
                     rewardLevel.innerText = window.level;
-                    setTimeout(startRewardGame, 1500); 
                 }
+                
+                setTimeout(startRewardGame, 1500); 
                 
                 if (window.level === 10) {
                     window.showCustomMessage("¡Has alcanzado el nivel 10! ¡Eres un campeón del estudio!", 'success');
@@ -1004,30 +1017,37 @@
         
         // --- Funciones de Premio (Juegos) ---
         function showGameContainer(containerId, iframeId, file) {
-             document.querySelectorAll('.game-container').forEach(container => {
-                 container.classList.remove('active');
-             });
-             const container = document.getElementById(containerId);
-             const iframe = document.getElementById(iframeId);
-             if (container && iframe) {
-                 container.classList.add('active');
-                 // El src es un placeholder. En producción debería ser la URL real del juego.
-                 iframe.src = `https://placehold.co/600x400/28a745/white?text=${file} Cargar Juego`;
-             }
+            document.querySelectorAll('.game-container').forEach(container => {
+                container.classList.remove('active');
+            });
+            const container = document.getElementById(containerId);
+            const iframe = document.getElementById(iframeId);
+            if (container && iframe) {
+                container.classList.add('active');
+                // APLICACIÓN DEL ARREGLO: Usar la ruta real de los juegos
+                iframe.src = `juegos/${file}`; 
+            }
         }
+
         function startRewardGame() {
-            showScreen('gameScreen');
+            hideAllScreens();
+            document.getElementById('gameScreen').classList.add('active');
+            
+            // Mostramos la pancarta de felicitación
             const rewardMessage = document.getElementById('rewardMessage');
-            if (rewardMessage) rewardMessage.style.display = 'block';
+            if (rewardMessage) {
+                rewardMessage.style.display = 'block';
+                const rewardLevel = document.getElementById('rewardLevel');
+                if (rewardLevel) rewardLevel.innerText = window.level;
+            }
+
+            // Lógica para seleccionar un juego aleatorio
             const gameIndex = Math.floor(Math.random() * availableGames.length);
             const selectedGame = availableGames[gameIndex];
-            showGameContainer(selectedGame.container, selectedGame.iframe, selectedGame.name);
+            
+            // Llamada corregida a showGameContainer usando los IDs y el nombre del archivo
+            showGameContainer(selectedGame.container, selectedGame.iframe, selectedGame.file);
         }
-        availableGames.forEach(game => {
-            window[game.func] = () => {
-                 showGameContainer(game.container, game.iframe, game.name);
-            };
-        });
 
         // --- Funciones Gestor de Tareas (Renderizado) ---
         function renderTasks() {
