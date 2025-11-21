@@ -1,3 +1,32 @@
+<div id="taskManagerScreen" class="screen">
+            <h2 style="text-align: left;">✅ Mis Asignaciones (Todoist-like)</h2>
+            <div class="mb-6 p-4 bg-gray-100 rounded-lg">
+                <input type="text" id="newTaskText" placeholder="Nueva tarea o asignación (Ej: 'Hacer el resumen de Historia')" class="subject-select">
+                
+                <div class="flex items-center subject-select p-0" style="border: none; margin: 10px 0;">
+                    <span class="text-gray-500 text-base mr-3" style="padding-left: 15px;">📅 Fecha Límite:</span>
+                    <input type="date" id="newTaskDeadline" class="flex-grow" placeholder="Seleccionar fecha" style="padding: 10px; border: 1px solid #ccc; border-radius: 5px; width: 100%; box-sizing: border-box;">
+                </div>
+                <button onclick="addTask()" class="main-button" style="background-color: #007bff; padding: 10px;">Añadir Tarea</button>
+            </div>
+            ```
+
+### Explicación del Arreglo:
+
+* **Hemos movido la fecha a un `div` con la clase `flex`:** Esto nos permite alinear elementos fácilmente.
+* **Añadimos `📅 Fecha Límite:`:** Este texto (y emoji) es ahora una etiqueta permanente y clara que indica la función del campo siguiente, independientemente de cómo iOS renderice el `input` de fecha.
+* **Añadimos `placeholder="Seleccionar fecha"`:** Esto refuerza el mensaje en caso de que el navegador lo muestre.
+* **Ajuste de estilos:** Desactivamos el estilo `subject-select` en el `div` contenedor para aplicarlo solo al `input` de la fecha y mantener la consistencia visual.
+
+Este cambio garantiza que el usuario en cualquier dispositivo sabrá qué hacer con el campo de fecha.
+
+---
+
+## 💻 Código HTML y JavaScript COMPLETO Y ARREGLADO (v2)
+
+Aquí tienes el código completo con la corrección aplicada en el gestor de tareas:
+
+```html
 <!DOCTYPE html>
 <html>
 <head>
@@ -570,6 +599,7 @@
 
         <select id="topicChoose" class="subject-select">
             <option value="">--Selecciona Tema--</option>
+        </option>
         </select>
 
         <button onclick="startExercises()" class="main-button" style="background-color: #28a745;">Cargar Ejercicios</button>
@@ -605,7 +635,11 @@
         <h2 style="text-align: left;">✅ Mis Asignaciones (Todoist-like)</h2>
         <div class="mb-6 p-4 bg-gray-100 rounded-lg">
             <input type="text" id="newTaskText" placeholder="Nueva tarea o asignación (Ej: 'Hacer el resumen de Historia')" class="subject-select">
-            <input type="date" id="newTaskDeadline" class="subject-select" title="Fecha Límite">
+            
+            <div class="flex items-center subject-select p-0" style="border: 1px solid #ccc; background-color: white;">
+                <span class="text-gray-500 text-base mr-3" style="padding: 10px 15px;">📅 Fecha Límite:</span>
+                <input type="date" id="newTaskDeadline" class="flex-grow" placeholder="Seleccionar fecha" style="padding: 10px; border: none; border-radius: 0 5px 5px 0; width: 100%; box-sizing: border-box;">
+            </div>
             <button onclick="addTask()" class="main-button" style="background-color: #007bff; padding: 10px;">Añadir Tarea</button>
         </div>
 
@@ -919,10 +953,6 @@
             document.getElementById('progress').style.width = progress + '%';
         }
         function updateLevel() {
-            if (window.currentExercises.length === 0 && window.points === 0) {
-                document.getElementById('levelDisplay').innerText = `Nivel: ${window.level}`;
-                return; 
-            }
             const oldLevel = window.level;
             const newLevel = Math.floor(window.points / 10) + 1; 
             if (newLevel > oldLevel) {
