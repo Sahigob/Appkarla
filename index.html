@@ -1804,7 +1804,6 @@
     const newLevel = Math.floor(window.points / 10) + 1; 
 
     // Solo actualizamos el nivel global y activamos la recompensa si el nivel SUBE.
-    // Esto es CRUCIAL para que el progreso cargado (oldLevel) no se borre al inicio.
     if (newLevel > oldLevel) {
         window.level = newLevel; 
         
@@ -1817,9 +1816,24 @@
             rewardMessage.style.display = 'block'; 
             rewardLevel.innerText = window.level;
         }
-        
+        // --- NUEVA LÓGICA DE RECOMPENSA DE MENSAJE (SIN BOTÓN) ---
+        if (window.level === 5) {
+            const now = new Date();
+            // Formato de hora: 14:35
+            const time = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }); 
+            // Formato de fecha: 27 nov.
+            const date = now.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }); 
+            
+            // Usamos la función showCustomMessage para mostrar el mensaje de recompensa
+            window.showCustomMessage(
+                `🎉 ¡Recompensa Nivel 5 desbloqueada! 🎉 Tienes 15 minutos de INSTAGRAM. (Hora registrada: ${time} del ${date})`,
+                'success' // Puedes usar 'success' o 'info' para un mensaje positivo
+            );
+        }
+        // --- FIN DE LA NUEVA LÓGICA DE INSTAGRAM ---
         setTimeout(startRewardGame, 1500); 
         
+        // ✅ CÓDIGO DEL NIVEL 10 REUBICADO CORRECTAMENTE AQUÍ
         if (window.level === 10) {
             window.showCustomMessage("¡Has alcanzado el nivel 10! ¡Eres un campeón del estudio!", 'success');
         }
@@ -1830,7 +1844,7 @@
     if(levelDisplay) levelDisplay.innerText = `Nivel: ${window.level}`;
 }
 
-// FUNCIONES DE RESET (Declaradas globalmente para la confirmación)
+// FUNCIONES DE RESET (Separadas de updateLevel)
 function showResetConfirmation() {
     window.showCustomMessage(
         '¡ADVERTENCIA! ¿Estás seguro de que quieres resetear tu progreso? Perderás todos tus puntos y volverás al Nivel 1.',
@@ -1849,11 +1863,10 @@ function showResetConfirmation() {
 async function resetProgress() {
     // 1. Resetear variables globales
     window.points = 0;
-    window.level = 1; // <--- FORZAMOS EL NIVEL A 1 aquí.
+    window.level = 1; 
 
     // 2. Actualizar la interfaz inmediatamente
     updatePoints();
-    // La llamamos para asegurar que el display se actualice con el nuevo window.level = 1.
     updateLevel(); 
     updateMedals();
     
@@ -1864,8 +1877,8 @@ async function resetProgress() {
     } else {
         window.showCustomMessage('✅ Progreso reseteado en memoria. Asegúrate de definir window.saveStudyData para guardar en Firebase.', 'info');
     }
-
-}            if (window.level === 10) {
+}    
+       if (window.level === 10) {
                     window.showCustomMessage("¡Has alcanzado el nivel 10! ¡Eres un campeón del estudio!", 'success');
                 }
             
