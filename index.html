@@ -560,6 +560,8 @@
             <button onclick="showScreen('taskManagerScreen')" class="main-button" style="background-color: #007bff; box-shadow: 0 3px #0056b3;">✅ Mi Gestor de Tareas (Todoist)</button>
             <button onclick="showScreen('visualPlannerScreen'); loadRoutineFromDB();" class="main-button" style="background-color: #ff9800; box-shadow: 0 3px #e68a00;">📅 Mi Rutina Diaria (Tiimo)</button>
             <button onclick="showScreen('reviewScreen')" class="main-button" style="background-color: #6c757d; box-shadow: 0 3px #545b62;">📈 Revisar Progreso</button>
+            <button onclick="showResetConfirmation()" class="main-button" style="background-color: #dc3545; margin-top: 15px;">🚨 Resetear Nivel y Puntos</button>
+
         </div>
 
         <h3>Selecciona tu Tema</h3>
@@ -1813,7 +1815,40 @@
                 }
                 
                 setTimeout(startRewardGame, 1500); 
-                
+                function showResetConfirmation() {
+            window.showCustomMessage(
+                '¡ADVERTENCIA! ¿Estás seguro de que quieres resetear tu progreso? Perderás todos tus puntos y volverás al Nivel 1.',
+                'warning'
+            );
+            const modalBtn = document.getElementById('customMessageModal').querySelector('.main-button');
+            if(modalBtn) {
+                modalBtn.innerText = 'Sí, Resetear';
+                // Redefinimos la acción del botón del modal
+                modalBtn.onclick = async () => {
+                    hideCustomMessage();
+                    await resetProgress(); 
+                };
+            }
+        }
+
+        async function resetProgress() {
+            // 1. Resetear variables globales
+            window.points = 0;
+            window.level = 1;
+
+            // 2. Actualizar la interfaz inmediatamente
+            updatePoints();
+            updateLevel(); 
+            updateMedals();
+            
+            // 3. Guardar en Firebase
+            if(typeof window.saveStudyData === 'function') {
+                await window.saveStudyData(); 
+                window.showCustomMessage('✅ ¡Progreso reseteado con éxito! Tienes 0 puntos y estás en Nivel 1.', 'success');
+            } else {
+                window.showCustomMessage('✅ Progreso reseteado en memoria. Asegúrate de definir window.saveStudyData para guardar en Firebase.', 'info');
+            }
+        }
                 if (window.level === 10) {
                     window.showCustomMessage("¡Has alcanzado el nivel 10! ¡Eres un campeón del estudio!", 'success');
                 }
@@ -2012,6 +2047,8 @@
         window.goToSubjectFromExercise = goToSubjectFromExercise;
         window.showTaskDeleteConfirmation = showTaskDeleteConfirmation;
         window.endGame = endGame;
+        window.showResetConfirmation = showResetConfirmation; 
+        window.resetProgress = resetProgress;
         
     </script>
 </body>
