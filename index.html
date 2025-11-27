@@ -1801,7 +1801,7 @@
         }
        function updateLevel() {
     const oldLevel = window.level;
-    const newLevel = Math.floor(window.points / 1) + 0; 
+    const newLevel = Math.floor(window.points / 10) + 1; 
 
     // Solo actualizamos el nivel global y activamos la recompensa si el nivel SUBE.
     if (newLevel > oldLevel) {
@@ -1817,19 +1817,25 @@
             rewardLevel.innerText = window.level;
         }
         // --- NUEVA LÓGICA DE RECOMPENSA DE MENSAJE (SIN BOTÓN) ---
-        if (window.level === 5) {
-            const now = new Date();
-            // Formato de hora: 14:35
-            const time = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }); 
-            // Formato de fecha: 27 nov.
-            const date = now.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }); 
-            
-            // Usamos la función showCustomMessage para mostrar el mensaje de recompensa
-            window.showCustomMessage(
-                `🎉 ¡Recompensa Nivel 5 desbloqueada! 🎉 Tienes 15 minutos de INSTAGRAM. (Hora registrada: ${time} del ${date})`,
-                'success' // Puedes usar 'success' o 'info' para un mensaje positivo
-            );
-        }
+        if (window.level !== 5 && rewardMessage && rewardLevel) {
+    rewardMessage.style.display = 'block'; 
+    rewardLevel.innerText = window.level;
+}
+
+// --- LÓGICA DE RECOMPENSA DE MENSAJE (SIN BOTÓN) ---
+if (window.level === 5) {
+    const now = new Date();
+    // Formato de hora: 14:35
+    const time = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }); 
+    // Formato de fecha: 27 nov.
+    const date = now.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }); 
+    
+    // Usamos la función showCustomMessage para mostrar el mensaje de recompensa
+    window.showCustomMessage(
+        `🎉 ¡Recompensa Nivel 5 desbloqueada! 🎉 Tienes 15 minutos de INSTAGRAM. (Hora registrada: ${time} del ${date})`,
+        'success' // Puedes usar 'success' o 'info' para un mensaje positivo
+    );
+}
         // --- FIN DE LA NUEVA LÓGICA DE INSTAGRAM ---
         setTimeout(startRewardGame, 1500); 
         
