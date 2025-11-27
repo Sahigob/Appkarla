@@ -1799,14 +1799,15 @@
                 progressEl.style.width = progress + '%';
             }
         }
-        function updateLevel() {
+       function updateLevel() {
     const oldLevel = window.level;
     const newLevel = Math.floor(window.points / 10) + 1; 
 
-    // FIX CLAVE: Aseguramos que el nivel se asigne siempre.
-    window.level = newLevel;
-
+    // Solo actualizamos el nivel global y activamos la recompensa si el nivel SUBE.
+    // Esto es CRUCIAL para que el progreso cargado (oldLevel) no se borre al inicio.
     if (newLevel > oldLevel) {
+        window.level = newLevel; 
+        
         if(typeof window.saveStudyData === 'function') window.saveStudyData(); 
         
         const rewardMessage = document.getElementById('rewardMessage');
@@ -1824,12 +1825,12 @@
         }
     }
     
-    // Esto siempre actualiza la pantalla con el valor de window.level.
+    // Esto siempre actualiza la pantalla con el valor de window.level (sea cargado, viejo, o nuevo).
     const levelDisplay = document.getElementById('levelDisplay');
     if(levelDisplay) levelDisplay.innerText = `Nivel: ${window.level}`;
 }
 
-// FUNCIONES DE RESET (Declaradas globalmente)
+// FUNCIONES DE RESET (Declaradas globalmente para la confirmación)
 function showResetConfirmation() {
     window.showCustomMessage(
         '¡ADVERTENCIA! ¿Estás seguro de que quieres resetear tu progreso? Perderás todos tus puntos y volverás al Nivel 1.',
@@ -1848,9 +1849,11 @@ function showResetConfirmation() {
 async function resetProgress() {
     // 1. Resetear variables globales
     window.points = 0;
+    window.level = 1; // <--- FORZAMOS EL NIVEL A 1 aquí.
 
     // 2. Actualizar la interfaz inmediatamente
     updatePoints();
+    // La llamamos para asegurar que el display se actualice con el nuevo window.level = 1.
     updateLevel(); 
     updateMedals();
     
@@ -1861,8 +1864,8 @@ async function resetProgress() {
     } else {
         window.showCustomMessage('✅ Progreso reseteado en memoria. Asegúrate de definir window.saveStudyData para guardar en Firebase.', 'info');
     }
-}
-                if (window.level === 10) {
+
+}            if (window.level === 10) {
                     window.showCustomMessage("¡Has alcanzado el nivel 10! ¡Eres un campeón del estudio!", 'success');
                 }
             
