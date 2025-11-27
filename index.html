@@ -1800,62 +1800,75 @@
             }
         }
         function updateLevel() {
-            const oldLevel = window.level;
-            const newLevel = Math.floor(window.points / 10) + 1; 
-            if (newLevel > oldLevel) {
-                window.level = newLevel;
-                if(typeof window.saveStudyData === 'function') window.saveStudyData(); 
-                
-                const rewardMessage = document.getElementById('rewardMessage');
-                const rewardLevel = document.getElementById('rewardLevel');
-                
-                if (rewardMessage && rewardLevel) {
-                    rewardMessage.style.display = 'block'; 
-                    rewardLevel.innerText = window.level;
-                }
-                
-                setTimeout(startRewardGame, 1500); 
-                function showResetConfirmation() {
-            window.showCustomMessage(
-                '¡ADVERTENCIA! ¿Estás seguro de que quieres resetear tu progreso? Perderás todos tus puntos y volverás al Nivel 1.',
-                'warning'
-            );
-            const modalBtn = document.getElementById('customMessageModal').querySelector('.main-button');
-            if(modalBtn) {
-                modalBtn.innerText = 'Sí, Resetear';
-                // Redefinimos la acción del botón del modal
-                modalBtn.onclick = async () => {
-                    hideCustomMessage();
-                    await resetProgress(); 
-                };
-            }
-        }
+    const oldLevel = window.level;
+    const newLevel = Math.floor(window.points / 10) + 1; 
 
-        async function resetProgress() {
-            // 1. Resetear variables globales
-            window.points = 0;
-            window.level = 1;
+    // FIX CLAVE: Aseguramos que el nivel se asigne siempre.
+    window.level = newLevel;
 
-            // 2. Actualizar la interfaz inmediatamente
-            updatePoints();
-            updateLevel(); 
-            updateMedals();
-            
-            // 3. Guardar en Firebase
-            if(typeof window.saveStudyData === 'function') {
-                await window.saveStudyData(); 
-                window.showCustomMessage('✅ ¡Progreso reseteado con éxito! Tienes 0 puntos y estás en Nivel 1.', 'success');
-            } else {
-                window.showCustomMessage('✅ Progreso reseteado en memoria. Asegúrate de definir window.saveStudyData para guardar en Firebase.', 'info');
-            }
-        }
+    if (newLevel > oldLevel) {
+        if(typeof window.saveStudyData === 'function') window.saveStudyData(); 
+        
+        const rewardMessage = document.getElementById('rewardMessage');
+        const rewardLevel = document.getElementById('rewardLevel');
+        
+        if (rewardMessage && rewardLevel) {
+            rewardMessage.style.display = 'block'; 
+            rewardLevel.innerText = window.level;
+        }
+        
+        setTimeout(startRewardGame, 1500); 
+        
+        if (window.level === 10) {
+            window.showCustomMessage("¡Has alcanzado el nivel 10! ¡Eres un campeón del estudio!", 'success');
+        }
+    }
+    
+    // Esto siempre actualiza la pantalla con el valor de window.level.
+    const levelDisplay = document.getElementById('levelDisplay');
+    if(levelDisplay) levelDisplay.innerText = `Nivel: ${window.level}`;
+}
+
+// FUNCIONES DE RESET (Declaradas globalmente)
+function showResetConfirmation() {
+    window.showCustomMessage(
+        '¡ADVERTENCIA! ¿Estás seguro de que quieres resetear tu progreso? Perderás todos tus puntos y volverás al Nivel 1.',
+        'warning'
+    );
+    const modalBtn = document.getElementById('customMessageModal').querySelector('.main-button');
+    if(modalBtn) {
+        modalBtn.innerText = 'Sí, Resetear';
+        modalBtn.onclick = async () => {
+            hideCustomMessage();
+            await resetProgress(); 
+        };
+    }
+}
+
+async function resetProgress() {
+    // 1. Resetear variables globales
+    window.points = 0;
+
+    // 2. Actualizar la interfaz inmediatamente
+    updatePoints();
+    updateLevel(); 
+    updateMedals();
+    
+    // 3. Guardar en Firebase
+    if(typeof window.saveStudyData === 'function') {
+        await window.saveStudyData(); 
+        window.showCustomMessage('✅ ¡Progreso reseteado con éxito! Tienes 0 puntos y estás en Nivel 1.', 'success');
+    } else {
+        window.showCustomMessage('✅ Progreso reseteado en memoria. Asegúrate de definir window.saveStudyData para guardar en Firebase.', 'info');
+    }
+}
                 if (window.level === 10) {
                     window.showCustomMessage("¡Has alcanzado el nivel 10! ¡Eres un campeón del estudio!", 'success');
                 }
-            }
+            
             const levelDisplay = document.getElementById('levelDisplay');
             if(levelDisplay) levelDisplay.innerText = `Nivel: ${window.level}`;
-        }
+        
         function updateMedals() {
             const container = document.getElementById('medals');
             if (!container) return;
