@@ -570,6 +570,7 @@
             <option value="Matemáticas">Matemáticas</option>
             <option value="Lengua">Lengua</option>
             <option value="Sociales">Sociales</option>
+            <option value="Inglés">Inglés</option>
         </select>
 
         <select id="evaluationChoose" class="subject-select">
@@ -1146,6 +1147,190 @@
         }
     },
     
+
+ // 🚀 NUEVA ASIGNATURA: Ingles
+    "Inglés": {
+        "1ºESO": {
+            "1º Evaluación": {
+                "Grammar": [
+    // Grammar: Verb 'to be'
+    { q: "She ___ from Italy.", options: ["am", "is", "are", "be"], correct: 1 },
+    { q: "We ___ happy to be here.", options: ["is", "am", "are", "be"], correct: 2 },
+    { q: "They ___ not at home. (Short form)", options: ["isn't", "aren't", "amn't", "not are"], correct: 1 },
+    // Grammar: Present Simple
+    { q: "He ___ coffee every morning.", options: ["drink", "drinks", "is drinking", "to drink"], correct: 1 },
+    { q: "___ you work on Sundays?", options: ["Is", "Do", "Does", "Are"], correct: 1 },
+    { q: "My sister ___ speak German.", options: ["don't", "doesn't", "not", "isn't"], correct: 1 },
+    // Vocabulary: Jobs
+    { q: "A person who treats sick animals is a ___.", options: ["vet", "pilot", "chef", "teacher"], correct: 0 },
+    // Grammar: Articles (a/an)
+    { q: "It's ___ interesting story.", options: ["a", "an", "the", "one"], correct: 1 },
+    { q: "I need ___ new phone.", options: ["an", "a", "the", "one"], correct: 1 },
+    // Grammar: Possessive Adjectives and Pronouns
+    { q: "This is ___ book. (Referencing me)", options: ["I", "me", "my", "mine"], correct: 2 },
+    { q: "It's ___ house. They live there.", options: ["their", "they", "them", "there"], correct: 0 },
+    // Grammar: Prepositions of Place
+    { q: "The keys are ___ the table.", options: ["at", "in", "on", "to"], correct: 2 },
+    { q: "She is ___ work.", options: ["in", "on", "at", "by"], correct: 2 },
+    // Vocabulary: Numbers/Time
+    { q: "What time is it? It's three ___.", options: ["o'clock", "clocks", "oclock", "o clock"], correct: 0 },
+    // Grammar: Wh-Questions
+    { q: "___ is your name? - John.", options: ["When", "Where", "How", "What"], correct: 3 },
+    { q: "___ do you live? - In Madrid.", options: ["Who", "What", "Where", "When"], correct: 2 },
+    // Vocabulary: Adjectives/Opposites
+    { q: "The opposite of 'cheap' is ___.", options: ["fast", "new", "expensive", "good"], correct: 2 },
+    // Grammar: Plurals
+    { q: "One child, two ___.", options: ["childs", "children", "childen", "child's"], correct: 1 },
+    // Vocabulary: Daily Routines
+    { q: "Before going to bed, I usually ___ my teeth.", options: ["wash", "do", "clean", "brush"], correct: 3 },
+    // Grammar: Adverbs of Frequency
+    { q: "I ___ go to the gym. (50%)", options: ["always", "never", "sometimes", "hardly ever"], correct: 2 },
+    // Grammar: Past Simple - Regular Verbs
+    { q: "Last night, I ___ television.", options: ["watch", "watched", "watching", "did watch"], correct: 1 },
+    { q: "We ___ to music yesterday.", options: ["listen", "listens", "listened", "listening"], correct: 2 },
+    // Grammar: Past Simple - Irregular Verbs
+    { q: "She ___ a new dress for the party.", options: ["buyed", "bought", "buys", "buy"], correct: 1 },
+    { q: "They ___ home late.", options: ["came", "comen", "comed", "coming"], correct: 0 },
+    // Grammar: Past Simple Questions
+    { q: "___ you go out last weekend?", options: ["Are", "Did", "Do", "Was"], correct: 1 },
+    { q: "Where ___ she go on holiday?", options: ["did", "does", "is", "was"], correct: 0 },
+    // Vocabulary: Family
+    { q: "My father's sister is my ___.", options: ["cousin", "niece", "aunt", "sister-in-law"], correct: 2 },
+    { q: "The son of my brother is my ___.", options: ["nephew", "uncle", "brother-in-law", "cousin"], correct: 0 },
+    // Grammar: Adjectives - Position
+    { q: "That is a ___ cat.", options: ["cat black", "black cat", "blackly cat", "cat of black"], correct: 1 },
+    // Vocabulary: Common Adjectives
+    { q: "The weather is very ___. It's raining a lot.", options: ["sunny", "windy", "cloudy", "wet"], correct: 3 },
+    { q: "If something is not difficult, it is ___.", options: ["easy", "hard", "busy", "quiet"], correct: 0 },
+    // Grammar: Object Pronouns
+    { q: "Can you help ___? (Referencing me)", options: ["I", "mine", "my", "me"], correct: 3 },
+    { q: "We saw ___ at the park. (Referencing them)", options: ["their", "they", "them", "theirs"], correct: 2 },
+    // Vocabulary: Time Expressions
+    { q: "It's half past ten. The time is 10:___.", options: ["10", "30", "45", "15"], correct: 1 },
+    { q: "In the morning, people usually say ___.", options: ["Good afternoon", "Good evening", "Good night", "Good morning"], correct: 3 },
+    // Grammar: Comparative Adjectives
+    { q: "My car is ___ than yours.", options: ["more fast", "faster", "fastest", "fast"], correct: 1 },
+    { q: "London is ___ than Paris.", options: ["more big", "bigger", "biggest", "big"], correct: 1 },
+    // Vocabulary: House and Home
+    { q: "You cook food in the ___.", options: ["bedroom", "bathroom", "living room", "kitchen"], correct: 3 },
+    // Grammar: Can / Can't
+    { q: "I ___ swim, but I can't fly.", options: ["can", "cans", "able to", "can't"], correct: 0 },
+    // Vocabulary: Food and Drink
+    { q: "A hot drink made from leaves is called ___.", options: ["coffee", "juice", "tea", "water"], correct: 2 },
+    // Grammar: Present Continuous (Action happening now)
+    { q: "What ___ you doing right now?", options: ["is", "do", "are", "does"], correct: 2 },
+    { q: "She ___ lunch in the kitchen now.", options: ["cook", "is cooking", "cooks", "cooking"], correct: 1 },
+    { q: "Look! They ___ on the phone.", options: ["talk", "talks", "are talking", "talk now"], correct: 2 },
+    // Grammar: Modals (Ability/Request)
+    { q: "I ___ speak three languages: Spanish, English, and French.", options: ["am", "do", "will", "can"], correct: 3 },
+    { q: "___ you help me with this box?", options: ["Do", "Can", "Are", "Should"], correct: 1 },
+    // Vocabulary: Places in a town
+    { q: "You can buy medicine at the ___.", options: ["library", "gym", "chemist's", "post office"], correct: 2 },
+    { q: "If you go left and then ___, you will find the bank.", options: ["straight", "forward", "right", "to the left"], correct: 2 },
+    // Grammar: Quantifiers (some/any)
+    { q: "Do you have ___ brothers or sisters?", options: ["some", "a", "any", "an"], correct: 2 },
+    { q: "I have ___ milk in the fridge.", options: ["any", "an", "some", "a"], correct: 2 },
+    { q: "There aren't ___ good restaurants near here.", options: ["some", "a lot", "many", "much"], correct: 2 },
+    // Vocabulary: Adjectives (Describing people)
+    { q: "My boss is very ___. He makes me laugh.", options: ["serious", "funny", "tired", "quiet"], correct: 1 },
+    // Grammar: Superlative Adjectives
+    { q: "Mount Everest is the ___ mountain in the world.", options: ["high", "higher", "highest", "most high"], correct: 2 },
+    // Grammar: Prepositions of time
+    { q: "I usually wake up ___ 7 o'clock.", options: ["in", "on", "at", "by"], correct: 2 },
+    // Grammar: Time Expressions (future)
+    { q: "I'm going on holiday ___ week.", options: ["last", "next", "today", "yesterday"], correct: 1 },
+    // Grammar: Future (going to)
+    { q: "We ___ visit our grandparents this weekend.", options: ["go to", "are going to", "going to", "are go to"], correct: 1 },
+    // Vocabulary: Clothes
+    { q: "I need to wear a ___ on my head when it's cold.", options: ["scarf", "gloves", "boots", "hat"], correct: 3 },
+    // Grammar: Imperatives/Instructions
+    { q: "___ quiet! The baby is sleeping.", options: ["Be", "Are", "Is", "Do"], correct: 0 },
+    // Vocabulary: Rooms/Furniture
+    { q: "There is a big ___ where we keep our clothes.", options: ["sofa", "armchair", "wardrobe", "cooker"], correct: 2 },
+    // Grammar: Adverbs of Manner
+    { q: "He drives very ___. He never has accidents.", options: ["careful", "carefully", "good", "fast"], correct: 1 },
+    // Grammar: Possessives ('s)
+    { q: "This is my ___ car. (Referring to the mother)", options: ["mothers'", "mother", "mother's", "mothers"], correct: 2 },
+    // Grammar: Modals (Obligation/Prohibition)
+    { q: "You ___ stop at the red traffic light. It's the law.", options: ["don't have to", "mustn't", "shouldn't", "must"], correct: 3 },
+    { q: "It's cold outside. You ___ wear a jacket.", options: ["can", "should", "mustn't", "don't need"], correct: 1 },
+    // Grammar: Modals (Necessity)
+    { q: "You ___ study hard if you want to pass the exam.", options: ["have to", "should", "can", "are"], correct: 0 },
+    { q: "You ___ buy bread. We already have some.", options: ["mustn't", "should", "don't have to", "can't"], correct: 2 },
+    // Grammar: Comparative and Superlative Adjectives
+    { q: "Paris is ___ than Rome.", options: ["beautifuler", "more beautiful", "most beautiful", "beautifullest"], correct: 1 },
+    { q: "Health is the ___ important thing in life.", options: ["most", "more", "much", "many"], correct: 0 },
+    { q: "He is a ___ swimmer. He won the gold medal.", options: ["better", "good", "best", "more good"], correct: 1 },
+    // Grammar: Adverbs of Frequency
+    { q: "I ___ dinner with my family every day.", options: ["usually have", "have usually", "have to usually", "am usually having"], correct: 0 },
+    // Grammar: Present Simple vs. Present Continuous
+    { q: "What ___ right now?", options: ["do you do", "you do", "are you doing", "you are doing"], correct: 2 },
+    { q: "I ___ to the gym twice a week.", options: ["am going", "go", "going", "went"], correct: 1 },
+    // Vocabulary: Appearance
+    { q: "She has long ___ hair.", options: ["brown", "browns", "brown's", "the brown"], correct: 0 },
+    { q: "The opposite of 'tall' is ___.", options: ["slim", "short", "fat", "curly"], correct: 1 },
+    // Vocabulary: Character/Personality
+    { q: "He is a very ___ person. He likes meeting new people.", options: ["shy", "quiet", "friendly", "serious"], correct: 2 },
+    { q: "A person who never changes their mind is ___.", options: ["lazy", "clever", "optimistic", "stubborn"], correct: 3 },
+    // Vocabulary: Phrasal Verbs
+    { q: "Can you ___ the radio? I can't hear it.", options: ["turn off", "turn up", "turn down", "turn on"], correct: 1 },
+    // Vocabulary: Travel and Transport
+    { q: "Before flying, you must ___ your luggage at the desk.", options: ["take off", "get on", "check in", "pick up"], correct: 2 },
+    { q: "A place where trains stop is a ___.", options: ["bus stop", "station", "airport", "port"], correct: 1 },
+    // Grammar: There is / There are
+    { q: "___ a bank near here?", options: ["There are", "Is there", "Are there", "There is"], correct: 1 },
+    { q: "There ___ two chairs and a table in the room.", options: ["is", "are", "be", "has"], correct: 1 },
+    // Grammar: Past Simple Irregular
+    { q: "What is the past simple of 'see'?", options: ["seed", "seen", "saw", "sees"], correct: 2 },
+    // Grammar: Future Simple (will) - Prediction
+    { q: "I think it ___ snow tonight.", options: ["is going to", "will", "does", "might be"], correct: 1 },
+    // Grammar: Future Simple (will) - Offer
+    { q: "The bags are too heavy. - I ___ help you carry them.", options: ["am helping", "will", "going to", "can't"], correct: 1 },
+    // Grammar: Quantifiers (too/enough)
+    { q: "The coffee isn't hot ___ to drink.", options: ["many", "too", "enough", "much"], correct: 2 },
+    // Grammar: Quantifiers (a lot of / much/many)
+    { q: "She doesn't have ___ time for hobbies.", options: ["a lot of", "many", "too much", "much"], correct: 3 },
+    // Grammar: Zero Conditional
+    { q: "If you mix blue and yellow, you ___ green.", options: ["will get", "are getting", "get", "got"], correct: 2 },
+    // Grammar: First Conditional
+    { q: "If I miss the bus, I ___ take a taxi.", options: ["will", "do", "take", "would"], correct: 0 },
+    // Grammar: verb + gerund
+    { q: "I enjoy ___ video games on weekends.", options: ["to playing", "play", "playing", "am playing"], correct: 2 },
+    // Grammar: verb + to + infinitive
+    { q: "They decided ___ out for dinner.", options: ["going", "go", "to go", "went"], correct: 2 },
+    // Vocabulary: Health/Body parts
+    { q: "I have a terrible pain in my head, I have a ___.", options: ["earache", "stomach ache", "headache", "sore throat"], correct: 2 },
+    // Vocabulary: Feelings/Emotions
+    { q: "She felt very ___ before her presentation.", options: ["calm", "nervous", "bored", "happy"], correct: 1 },
+    // Vocabulary: Internet/Technology
+    { q: "I need to ___ this file to the cloud.", options: ["download", "switch off", "upload", "turn on"], correct: 2 },
+    // Grammar: Prepositions of movement
+    { q: "We walked ___ the mountain trail.", options: ["across", "at", "in", "through"], correct: 3 },
+    // Grammar: Question tags (basic)
+    { q: "You are Spanish, ___?", options: ["do you", "don't you", "aren't you", "are you"], correct: 2 },
+    // Grammar: Time clauses (when/if)
+    { q: "I'll give you a call ___ I get home.", options: ["if", "when", "while", "until"], correct: 1 },
+    // Grammar: Present Perfect (basic, common verbs)
+    { q: "She ___ just finished her homework.", options: ["is", "has", "does", "did"], correct: 1 },
+    // Grammar: Used to
+    { q: "Did you ___ play outside when you were a child?", options: ["used to", "use to", "are used to", "using to"], correct: 1 },
+    // Vocabulary: Weather
+    { q: "It's difficult to see because it's very ___ outside.", options: ["sunny", "snowy", "foggy", "clear"], correct: 2 },
+    // Grammar: Modal for possibility (might/may)
+    { q: "I ___ go to the party, but it depends on my work.", options: ["must", "should", "will", "might"], correct: 3 },
+    // Vocabulary: Clothes/Accessories
+    { q: "I put my money and credit cards in my ___.", options: ["gloves", "scarf", "wallet", "hat"], correct: 2 },
+    // Vocabulary: Phrasal verb (e.g., look after)
+    { q: "The police are trying to ___ the missing child.", options: ["look for", "look after", "look at", "look up"], correct: 0 }
+
+                
+                        ]
+            }
+        }
+    },
+    
+
+
     // 🚀 NUEVA ASIGNATURA: LENGUA
     "Lengua": {
         "1ºESO": {
