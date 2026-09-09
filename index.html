@@ -11711,7 +11711,7 @@ const curriculum={
   }
 }
 ;
-const games=[['Arkanoid Táctil','arkanoid.html'],['Juego de Pares','memoria.html'],['Matamarcianos','matamarcianos.html'],['Juego de Asteroides','asteroides.html'],['Donkey Kong','donkeykong.html'],['Juego de la Rana','frogger.html'],['Tenis (Pong)','pong.html'],['Conecta 4','tictactoe.html'],['Tetris Lite','tetris.html'],['Pac-Man','pacman.html']];
+const games=[['Skate Park','skate.html'],['Frontenis','frontenis.html'],['Arkanoid Táctil','arkanoid.html'],['Juego de Pares','memoria.html'],['Matamarcianos','matamarcianos.html'],['Juego de Asteroides','asteroides.html'],['Donkey Kong','donkeykong.html'],['Juego de la Rana','frogger.html'],['Tenis (Pong)','pong.html'],['Conecta 4','tictactoe.html'],['Tetris Lite','tetris.html'],['Pac-Man','pacman.html']];
 function enterApp(){const n=document.getElementById('studentNameLogin').value.trim();if(!n)return showCustomMessage('Escribe tu nombre para entrar.','error');localStorage.setItem('carlaMathsName',n);showScreen('subjectScreen')}
 function hideAllScreens(){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'))}function showScreen(id){hideAllScreens();document.getElementById(id)?.classList.add('active');if(id==='subjectScreen'){populateEvaluations();showStep(1);}if(id==='tasksScreen')renderTasks();if(id==='routineScreen')renderRoutine()}
 function showStep(n){document.querySelectorAll('.step-panel').forEach(x=>x.classList.remove('active'));document.getElementById('step'+n)?.classList.add('active')}
